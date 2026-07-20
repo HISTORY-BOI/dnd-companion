@@ -1,0 +1,2370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>D&D Party Companion</title>
+<style>
+/* ============================================================
+   THEME & RESET
+   ============================================================ */
+:root {
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --bg: #ece0c2;
+  --bg2: #e2d3ac;
+  --card: #f6ecd2;
+  --ink: #38291a;
+  --ink-soft: #7a6547;
+  --line: #c3a878;
+  --line-strong: #9c7f4e;
+  --accent: #7a1a22;
+  --accent-soft: #ecd4c4;
+  --gold: #8c6b1f;
+  --gold-bright: #b98f2e;
+  --good: #4a6b2f;
+  --warn: #9c4a14;
+  --pip: #7a1a22;
+  --pip-empty: #cdb488;
+  --header-bg: linear-gradient(180deg, #3b2417 0%, #271609 100%);
+  --header-ink: #e7c56b;
+  --paper: radial-gradient(ellipse 120% 90% at 50% -10%, rgba(255,248,222,.9), transparent 60%),
+           radial-gradient(ellipse 140% 100% at 50% 110%, rgba(140,107,31,.14), transparent 55%);
+  --shadow: 0 1px 4px rgba(56,41,26,.22);
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #191310;
+    --bg2: #241b13;
+    --card: #241c12;
+    --ink: #e8d8b4;
+    --ink-soft: #a68f68;
+    --line: #4d3c22;
+    --line-strong: #6e5730;
+    --accent: #d1857c;
+    --accent-soft: #45231d;
+    --gold: #d4a848;
+    --gold-bright: #e8c568;
+    --good: #8fbf6f;
+    --warn: #e0954e;
+    --pip: #b3454f;
+    --pip-empty: #4d3c22;
+    --header-bg: linear-gradient(180deg, #2c1b0f 0%, #180d05 100%);
+    --header-ink: #e7c56b;
+    --paper: radial-gradient(ellipse 120% 90% at 50% -10%, rgba(232,197,104,.06), transparent 60%),
+             radial-gradient(ellipse 140% 100% at 50% 110%, rgba(0,0,0,.5), transparent 55%);
+    --shadow: 0 1px 4px rgba(0,0,0,.5);
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--serif);
+  background: var(--bg);
+  background-image: var(--paper),
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(120,90,40,.02) 2px 4px);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-size: 15.5px;
+  line-height: 1.45;
+  padding-bottom: 70px; /* room for bottom tab bar */
+}
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input, select, textarea {
+  font: inherit; color: var(--ink);
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  max-width: 100%;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--gold); outline-offset: 0; }
+h1,h2,h3,h4 { line-height: 1.2; }
+
+/* ============================================================
+   LAYOUT: HEADER + TABS
+   ============================================================ */
+header {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--header-bg); color: var(--header-ink);
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 3px double var(--gold-bright);
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+header h1 {
+  font-size: 18px; font-variant: small-caps; letter-spacing: 1.5px; white-space: nowrap;
+  font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+#charSelect {
+  flex: 1; min-width: 0;
+  background: rgba(0,0,0,.35); color: var(--header-ink);
+  border: 1px solid rgba(231,197,107,.45); border-radius: 4px;
+  font-weight: 600; font-family: var(--serif);
+}
+#charSelect option { color: #000; }
+#menuBtn { font-size: 20px; padding: 2px 8px; color: var(--header-ink); }
+
+nav.tabs {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  display: flex;
+  background: var(--card);
+  border-top: 2px solid var(--line-strong);
+  box-shadow: 0 -2px 8px rgba(56,41,26,.18);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+nav.tabs button {
+  flex: 1; padding: 12px 0 10px;
+  font-family: var(--serif); font-variant: small-caps; letter-spacing: 1px;
+  font-size: 14px; font-weight: 700; color: var(--ink-soft);
+  border-top: 3px solid transparent;
+}
+nav.tabs button.active { color: var(--accent); border-top-color: var(--gold-bright); }
+nav.tabs button .ico { display: block; font-size: 19px; margin-bottom: 1px; }
+
+main { max-width: 860px; margin: 0 auto; padding: 12px; }
+@media (min-width: 700px) {
+  body { padding-bottom: 20px; }
+  nav.tabs { position: sticky; top: 49px; bottom: auto; border-top: none; border-bottom: 1px solid var(--line); }
+  nav.tabs button { padding: 9px 0; }
+  nav.tabs button .ico { display: inline; margin-right: 5px; font-size: 15px; }
+  nav.tabs button.active { border-top-color: transparent; box-shadow: inset 0 -3px 0 var(--accent); }
+}
+
+/* ============================================================
+   GENERIC COMPONENTS
+   ============================================================ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), inset 0 0 0 1px var(--card), inset 0 0 0 2px var(--line);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.card h3 {
+  display: flex; align-items: center; gap: 10px;
+  font-variant: small-caps; text-transform: none; font-size: 15px; letter-spacing: 1.5px;
+  color: var(--gold); margin-bottom: 8px; font-weight: 700;
+}
+.card h3::after {
+  content: ""; flex: 1; height: 1px;
+  background: linear-gradient(to right, var(--line-strong), transparent);
+}
+.grid { display: grid; gap: 10px; }
+.muted { color: var(--ink-soft); font-size: 13px; }
+.pill {
+  display: inline-block; padding: 1px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; letter-spacing: .3px;
+  background: var(--bg2); border: 1px solid var(--line); color: var(--ink-soft);
+  vertical-align: 1px;
+}
+.pill.action   { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.pill.bonus    { background: #e9edd7; color: #5a6a1e; border-color: transparent; }
+.pill.reaction { background: #ddeaf2; color: #29586e; border-color: transparent; }
+@media (prefers-color-scheme: dark) {
+  .pill.bonus    { background: #37391f; color: #c4d17a; }
+  .pill.reaction { background: #1e3340; color: #8fc3dd; }
+}
+.btn {
+  display: inline-block; padding: 8px 16px; border-radius: 5px;
+  background: linear-gradient(180deg, var(--card), var(--bg2));
+  border: 1px solid var(--line-strong);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(56,41,26,.2);
+  font-family: var(--serif); font-variant: small-caps; letter-spacing: .8px;
+  font-weight: 700; font-size: 15px;
+}
+.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn.primary {
+  background: linear-gradient(180deg, #93313a, #6b141c);
+  border-color: #4c0d13; color: #f3e3b8;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 3px rgba(56,41,26,.35);
+  text-shadow: 0 1px 1px rgba(0,0,0,.4);
+}
+.btn.small { padding: 4px 11px; font-size: 13.5px; }
+.btn.danger { color: var(--accent); border-color: var(--accent); background: none; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* pips (spell slots, resources) — diamond-cut gems */
+.pips { display: inline-flex; flex-wrap: wrap; gap: 8px; vertical-align: middle; padding: 2px 4px; }
+.pip {
+  width: 16px; height: 16px; border-radius: 3px;
+  transform: rotate(45deg);
+  border: 2px solid var(--pip);
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.45), transparent 55%), var(--pip);
+  box-shadow: 0 1px 2px rgba(56,41,26,.35);
+  cursor: pointer; padding: 0;
+}
+.pip.empty { background: transparent; border-color: var(--pip-empty); box-shadow: none; }
+
+/* ============================================================
+   SHEET VIEW
+   ============================================================ */
+.namecard { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.charname { font-size: 20px; font-variant: small-caps; letter-spacing: .8px; }
+.portrait {
+  width: 74px; height: 74px; object-fit: cover; object-position: top;
+  border: 2px solid var(--gold); border-radius: 5px;
+  box-shadow: 0 0 0 1px var(--card), 0 0 0 2px var(--line-strong), 0 2px 6px rgba(56,41,26,.35);
+  flex: none;
+}
+.portrait.placeholder {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; background: var(--bg2); color: var(--ink-soft);
+  border-color: var(--line-strong);
+}
+.portrait.editpreview { width: 110px; height: 110px; }
+.statrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(66px, 1fr)); gap: 8px; margin-bottom: 12px; }
+
+/* skills */
+.skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 3px 16px; }
+.skill { display: flex; align-items: baseline; gap: 7px; font-size: 14px; color: var(--ink-soft); }
+.skill.trained { color: var(--ink); }
+.skill .sn { flex: 1; }
+.skill .dot { color: var(--pip-empty); font-size: 12px; }
+.skill .dot.l1 { color: var(--gold); }
+.skill .dot.l2 { color: var(--accent); }
+
+/* equipment & coin */
+.equiprow { display: flex; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px dotted var(--line); }
+.equiprow .eqname { flex: 1; }
+.equiprow .eqqty { min-width: 26px; text-align: center; }
+.equiprow .eqdel { color: var(--accent); font-size: 17px; padding: 0 6px; }
+.coinrow { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.coin { display: flex; flex-direction: column; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--gold); }
+.coin input { width: 64px; }
+
+/* drag & drop sorting */
+.draghandle { cursor: grab; color: var(--ink-soft); font-size: 15px; padding: 0 2px; user-select: none; }
+.rowmove { display: flex; flex-direction: column; gap: 1px; }
+.rowmove button { font-size: 10px; line-height: 1.2; color: var(--ink-soft); padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg2); }
+.actionitem.dragover { border-top: 3px solid var(--gold-bright); }
+.stat {
+  background: var(--card); border: 1px solid var(--line-strong); border-radius: var(--radius);
+  box-shadow: var(--shadow), inset 0 0 0 1px var(--card), inset 0 0 0 2px var(--line);
+  text-align: center; padding: 8px 4px;
+}
+.stat .v { font-size: 24px; font-weight: 700; font-family: var(--serif); }
+.stat .v.zeroed { color: var(--warn); }
+.stat .l { font-size: 11px; font-variant: small-caps; letter-spacing: 1.5px; color: var(--gold); font-weight: 700; }
+.abilities { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 12px; }
+@media (max-width: 480px) { .abilities { grid-template-columns: repeat(3, 1fr); } }
+.ab {
+  background: var(--card); border: 1px solid var(--line-strong); border-radius: var(--radius);
+  box-shadow: var(--shadow), inset 0 0 0 1px var(--card), inset 0 0 0 2px var(--line);
+  text-align: center; padding: 7px 2px;
+}
+.ab .name { font-size: 11px; font-variant: small-caps; letter-spacing: 1.5px; color: var(--gold); font-weight: 700; }
+.ab .mod { font-size: 21px; font-weight: 700; font-family: var(--serif); }
+.ab .score { font-size: 11px; color: var(--ink-soft); }
+.hpbar { height: 10px; border-radius: 5px; background: var(--pip-empty); overflow: hidden; margin: 6px 0; }
+.hpbar > div { height: 100%; background: var(--good); border-radius: 5px; transition: width .2s; }
+.hpbar > div.low { background: var(--warn); }
+.hpbar > div.crit { background: var(--accent); }
+.hpctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hpctl .bignum { font-size: 26px; font-weight: 800; min-width: 90px; }
+.stepper { display: inline-flex; align-items: center; gap: 2px; }
+.stepper button {
+  width: 30px; height: 30px; border-radius: 7px; font-size: 17px; font-weight: 700;
+  background: var(--bg2); border: 1px solid var(--line);
+}
+.slotrow { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
+.slotrow .lvl { width: 34px; font-weight: 700; font-size: 13px; color: var(--ink-soft); }
+.flag {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft); color: var(--accent);
+  padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  margin: 2px 4px 2px 0;
+}
+.flag button { font-size: 15px; line-height: 1; color: inherit; }
+.economy { display: flex; gap: 8px; margin-bottom: 8px; }
+.econ {
+  flex: 1; text-align: center; padding: 6px 2px; border-radius: 5px;
+  border: 1px dashed var(--line-strong); font-size: 13px; font-weight: 700; color: var(--ink-soft);
+  font-variant: small-caps; letter-spacing: 1px;
+}
+.econ.used { background: var(--accent-soft); color: var(--accent); border-style: solid; text-decoration: line-through; }
+#log { font-size: 12.5px; color: var(--ink-soft); }
+#log div { padding: 3px 0; border-bottom: 1px dotted var(--line); }
+
+/* ============================================================
+   ACTIONS VIEW
+   ============================================================ */
+.filterbar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.filterbar input[type=search] { flex: 1; min-width: 140px; }
+.chip {
+  padding: 5px 13px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
+  font-family: var(--serif); font-variant: small-caps; letter-spacing: .5px;
+  background: var(--card); border: 1px solid var(--line-strong); color: var(--ink-soft);
+}
+.chip.active { background: linear-gradient(180deg, #93313a, #6b141c); border-color: #4c0d13; color: #f3e3b8; }
+.actionitem {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 1px solid var(--line-strong); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 10px 12px; margin-bottom: 8px;
+  cursor: pointer;
+  border-left: 4px solid var(--line-strong);
+}
+.actionitem:hover { border-color: var(--gold-bright); }
+.actionitem .info { flex: 1; min-width: 0; }
+.actionitem .nm { font-weight: 700; }
+.actionitem .desc {
+  font-size: 12.5px; color: var(--ink-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.actionitem .dmg { text-align: right; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.actionitem .dmg .sub { display: block; font-size: 11px; font-weight: 400; color: var(--ink-soft); }
+.grouphead {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--serif); font-variant: small-caps; letter-spacing: 2px;
+  font-size: 15px; font-weight: 700; color: var(--gold); margin: 16px 0 7px;
+}
+.grouphead::before { content: "❧"; color: var(--line-strong); font-size: 13px; }
+.grouphead::after {
+  content: ""; flex: 1; height: 1px;
+  background: linear-gradient(to right, var(--line-strong), transparent);
+}
+
+/* ============================================================
+   MODAL (resolution panel + editors)
+   ============================================================ */
+.overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(20,15,10,.55);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+@media (min-width: 700px) { .overlay { align-items: center; } }
+.modal {
+  background: var(--bg); background-image: var(--paper);
+  width: 100%; max-width: 640px;
+  max-height: 92vh; overflow-y: auto;
+  border: 2px solid var(--line-strong); border-bottom: none;
+  border-radius: 12px 12px 0 0; padding: 16px 16px 24px;
+  box-shadow: inset 0 0 0 1px var(--bg), inset 0 0 0 2px var(--line);
+}
+@media (min-width: 700px) { .modal { border-radius: 12px; border-bottom: 2px solid var(--line-strong); max-height: 88vh; } }
+.modal h2 { font-size: 22px; margin-bottom: 2px; font-variant: small-caps; letter-spacing: 1px; }
+.modal .closebar { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.modal .closebar button { font-size: 22px; color: var(--ink-soft); padding: 0 4px; }
+.optrow {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  margin-bottom: 6px; background: var(--card); cursor: pointer;
+}
+.optrow input { margin-top: 3px; accent-color: var(--accent); width: 17px; height: 17px; flex: none; }
+.optrow .on { font-weight: 700; }
+.optrow .od { font-size: 12.5px; color: var(--ink-soft); }
+.optrow.disabled { opacity: .5; }
+.instructions {
+  background: var(--card); border: 1px solid var(--gold); border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px var(--card), inset 0 0 0 2px var(--line), var(--shadow);
+  padding: 12px 12px 12px 14px; margin: 10px 0;
+  border-left: 4px solid var(--gold);
+}
+.instructions ol { margin-left: 20px; }
+.instructions li { margin: 4px 0; }
+.instructions b.hit { color: var(--accent); }
+.mmx { display: flex; gap: 8px; margin: 10px 0; }
+.mmx .stat { flex: 1; }
+.warnbox {
+  background: var(--accent-soft); color: var(--accent);
+  border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 13.5px; font-weight: 600;
+}
+.rollout {
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; margin-top: 8px; font-size: 14px;
+}
+.rollout .total { font-size: 24px; font-weight: 800; }
+.rollout .crit { color: var(--accent); font-weight: 800; }
+.die {
+  display: inline-block; min-width: 24px; text-align: center; padding: 2px 4px; margin: 1px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 5px;
+  font-weight: 700; font-size: 13px;
+}
+.die.max { border-color: var(--good); color: var(--good); }
+.die.min { border-color: var(--accent); color: var(--accent); }
+.die.dropped { opacity: .4; text-decoration: line-through; }
+
+/* ============================================================
+   EDIT VIEW
+   ============================================================ */
+.subtabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.formrow { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.formrow label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.formrow input[type=text], .formrow input[type=number] { width: 130px; }
+.formrow input.wide, .formrow select.wide { width: 100%; }
+.formrow textarea { width: 100%; min-height: 60px; }
+.formrow .full { width: 100%; }
+.listedit { border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin-bottom: 8px; background: var(--bg2); }
+.editrowbtns { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+fieldset {
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 12px;
+}
+legend { font-variant: small-caps; font-size: 14px; letter-spacing: 1.5px; font-weight: 700; color: var(--gold); padding: 0 6px; }
+.hint { font-size: 12px; color: var(--ink-soft); margin-top: 3px; }
+code { background: var(--bg2); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 12.5px; }
+
+/* menu dropdown */
+#menuPanel {
+  position: absolute; right: 10px; top: 46px; z-index: 60;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25); overflow: hidden; min-width: 190px;
+}
+#menuPanel button { display: block; width: 100%; text-align: left; padding: 11px 16px; font-size: 14px; }
+#menuPanel button:hover { background: var(--bg2); }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚔️ Party Companion</h1>
+  <select id="charSelect"></select>
+  <button id="menuBtn" title="Menu">☰</button>
+  <div id="menuPanel" class="hidden">
+    <button data-menu="new">＋ New character</button>
+    <button data-menu="duplicate">⧉ Duplicate character</button>
+    <button data-menu="export">⬇ Export character</button>
+    <button data-menu="exportAll">⬇ Export all</button>
+    <button data-menu="import">⬆ Import file</button>
+    <button data-menu="delete">✕ Delete character</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="sheet" class="active"><span class="ico">📜</span>Sheet</button>
+  <button data-tab="actions"><span class="ico">⚔️</span>Actions</button>
+  <button data-tab="edit"><span class="ico">✎</span>Edit</button>
+</nav>
+
+<main>
+  <div id="view-sheet"></div>
+  <div id="view-actions" class="hidden"></div>
+  <div id="view-edit" class="hidden"></div>
+</main>
+
+<div id="modalRoot"></div>
+<input type="file" id="importFile" accept=".json,application/json" class="hidden">
+
+<script>
+"use strict";
+/* ============================================================
+   SECTION 1: RULES CONSTANTS (from the 2024 Player's Handbook)
+   ============================================================ */
+const ABILITIES = ["str","dex","con","int","wis","cha"];
+const ABILITY_NAMES = { str:"Strength", dex:"Dexterity", con:"Constitution", int:"Intelligence", wis:"Wisdom", cha:"Charisma" };
+const DAMAGE_TYPES = ["acid","bludgeoning","cold","fire","force","lightning","necrotic","piercing","poison","psychic","radiant","slashing","thunder","healing"];
+
+// 2024 skill list → governing ability. Character stores skills as {name: 0|1|2}
+// (0/absent = untrained, 1 = proficient, 2 = expertise).
+const SKILLS = {
+  "Acrobatics":"dex", "Animal Handling":"wis", "Arcana":"int", "Athletics":"str",
+  "Deception":"cha", "History":"int", "Insight":"wis", "Intimidation":"cha",
+  "Investigation":"int", "Medicine":"wis", "Nature":"int", "Perception":"wis",
+  "Performance":"cha", "Persuasion":"cha", "Religion":"int",
+  "Sleight of Hand":"dex", "Stealth":"dex", "Survival":"wis"
+};
+const COINS = ["pp","gp","ep","sp","cp"];
+
+// Spell slots per character level. Index = char level (1-20) → array of slots for spell levels 1..9
+const SLOT_TABLES = {
+  full: [null,
+    [2],[3],[4,2],[4,3],[4,3,2],[4,3,3],[4,3,3,1],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,2],
+    [4,3,3,3,2,1],[4,3,3,3,2,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1,1],
+    [4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1,1],[4,3,3,3,3,1,1,1,1],[4,3,3,3,3,2,1,1,1],[4,3,3,3,3,2,2,1,1]],
+  half: [null,
+    [2],[2],[3],[3],[4,2],[4,2],[4,3],[4,3],[4,3,2],[4,3,2],
+    [4,3,3],[4,3,3],[4,3,3,1],[4,3,3,1],[4,3,3,2],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2]],
+  third: [null,
+    [],[],[2],[3],[3],[3],[4,2],[4,2],[4,2],[4,3],
+    [4,3],[4,3],[4,3,2],[4,3,2],[4,3,2],[4,3,3],[4,3,3],[4,3,3],[4,3,3,1],[4,3,3,1]],
+  none: null
+};
+// Warlock Pact Magic: char level → {count, level}
+const PACT_TABLE = [null,
+  {n:1,lvl:1},{n:2,lvl:1},{n:2,lvl:2},{n:2,lvl:2},{n:2,lvl:3},{n:2,lvl:3},{n:2,lvl:4},{n:2,lvl:4},
+  {n:2,lvl:5},{n:2,lvl:5},{n:3,lvl:5},{n:3,lvl:5},{n:3,lvl:5},{n:3,lvl:5},{n:3,lvl:5},{n:3,lvl:5},
+  {n:4,lvl:5},{n:4,lvl:5},{n:4,lvl:5},{n:4,lvl:5}];
+
+const CLASSES = {
+  "Barbarian": "none", "Bard": "full", "Cleric": "full", "Druid": "full",
+  "Fighter": "none", "Monk": "none", "Paladin": "half", "Ranger": "half",
+  "Rogue": "none", "Sorcerer": "full", "Warlock": "pact", "Wizard": "full"
+};
+
+// 2024 weapons table (PHB ch. 6) — used by the "add weapon" quick-pick in the editor.
+// dmg uses the engine dice language; MOD = the attack ability modifier.
+const WEAPON_LIBRARY = [
+  // Simple Melee
+  { name:"Club",           dmg:"1d4+MOD", type:"bludgeoning", props:"Light",                                mastery:"Slow",   cat:"Simple Melee", tags:["weapon","melee","light"] },
+  { name:"Dagger",         dmg:"1d4+MOD", type:"piercing",    props:"Finesse, Light, Thrown (20/60)",      mastery:"Nick",   cat:"Simple Melee", tags:["weapon","melee","finesse","light","thrown"] },
+  { name:"Greatclub",      dmg:"1d8+MOD", type:"bludgeoning", props:"Two-Handed",                           mastery:"Push",   cat:"Simple Melee", tags:["weapon","melee","two-handed"] },
+  { name:"Handaxe",        dmg:"1d6+MOD", type:"slashing",    props:"Light, Thrown (20/60)",                mastery:"Vex",    cat:"Simple Melee", tags:["weapon","melee","light","thrown"] },
+  { name:"Javelin",        dmg:"1d6+MOD", type:"piercing",    props:"Thrown (30/120)",                      mastery:"Slow",   cat:"Simple Melee", tags:["weapon","melee","thrown"] },
+  { name:"Light Hammer",   dmg:"1d4+MOD", type:"bludgeoning", props:"Light, Thrown (20/60)",                mastery:"Nick",   cat:"Simple Melee", tags:["weapon","melee","light","thrown"] },
+  { name:"Mace",           dmg:"1d6+MOD", type:"bludgeoning", props:"—",                                    mastery:"Sap",    cat:"Simple Melee", tags:["weapon","melee"] },
+  { name:"Quarterstaff",   dmg:"1d6+MOD", type:"bludgeoning", props:"Versatile (1d8)",                      mastery:"Topple", cat:"Simple Melee", tags:["weapon","melee","versatile"] },
+  { name:"Sickle",         dmg:"1d4+MOD", type:"slashing",    props:"Light",                                mastery:"Nick",   cat:"Simple Melee", tags:["weapon","melee","light"] },
+  { name:"Spear",          dmg:"1d6+MOD", type:"piercing",    props:"Thrown (20/60), Versatile (1d8)",      mastery:"Sap",    cat:"Simple Melee", tags:["weapon","melee","thrown","versatile"] },
+  // Simple Ranged
+  { name:"Dart",           dmg:"1d4+MOD", type:"piercing",    props:"Finesse, Thrown (20/60)",              mastery:"Vex",    cat:"Simple Ranged", tags:["weapon","ranged","finesse","thrown"] },
+  { name:"Light Crossbow", dmg:"1d8+MOD", type:"piercing",    props:"Ammunition (80/320), Loading, Two-Handed", mastery:"Slow", cat:"Simple Ranged", tags:["weapon","ranged","ammunition","loading","two-handed"] },
+  { name:"Shortbow",       dmg:"1d6+MOD", type:"piercing",    props:"Ammunition (80/320), Two-Handed",      mastery:"Vex",    cat:"Simple Ranged", tags:["weapon","ranged","ammunition","two-handed"] },
+  { name:"Sling",          dmg:"1d4+MOD", type:"bludgeoning", props:"Ammunition (30/120)",                  mastery:"Slow",   cat:"Simple Ranged", tags:["weapon","ranged","ammunition"] },
+  // Martial Melee
+  { name:"Battleaxe",      dmg:"1d8+MOD", type:"slashing",    props:"Versatile (1d10)",                     mastery:"Topple", cat:"Martial Melee", tags:["weapon","melee","versatile"] },
+  { name:"Flail",          dmg:"1d8+MOD", type:"bludgeoning", props:"—",                                    mastery:"Sap",    cat:"Martial Melee", tags:["weapon","melee"] },
+  { name:"Glaive",         dmg:"1d10+MOD",type:"slashing",    props:"Heavy, Reach, Two-Handed",             mastery:"Graze",  cat:"Martial Melee", tags:["weapon","melee","heavy","reach","two-handed"] },
+  { name:"Greataxe",       dmg:"1d12+MOD",type:"slashing",    props:"Heavy, Two-Handed",                    mastery:"Cleave", cat:"Martial Melee", tags:["weapon","melee","heavy","two-handed"] },
+  { name:"Greatsword",     dmg:"2d6+MOD", type:"slashing",    props:"Heavy, Two-Handed",                    mastery:"Graze",  cat:"Martial Melee", tags:["weapon","melee","heavy","two-handed"] },
+  { name:"Halberd",        dmg:"1d10+MOD",type:"slashing",    props:"Heavy, Reach, Two-Handed",             mastery:"Cleave", cat:"Martial Melee", tags:["weapon","melee","heavy","reach","two-handed"] },
+  { name:"Lance",          dmg:"1d10+MOD",type:"piercing",    props:"Heavy, Reach, Two-Handed (unless mounted)", mastery:"Topple", cat:"Martial Melee", tags:["weapon","melee","heavy","reach"] },
+  { name:"Longsword",      dmg:"1d8+MOD", type:"slashing",    props:"Versatile (1d10)",                     mastery:"Sap",    cat:"Martial Melee", tags:["weapon","melee","versatile"] },
+  { name:"Maul",           dmg:"2d6+MOD", type:"bludgeoning", props:"Heavy, Two-Handed",                    mastery:"Topple", cat:"Martial Melee", tags:["weapon","melee","heavy","two-handed"] },
+  { name:"Morningstar",    dmg:"1d8+MOD", type:"piercing",    props:"—",                                    mastery:"Sap",    cat:"Martial Melee", tags:["weapon","melee"] },
+  { name:"Pike",           dmg:"1d10+MOD",type:"piercing",    props:"Heavy, Reach, Two-Handed",             mastery:"Push",   cat:"Martial Melee", tags:["weapon","melee","heavy","reach","two-handed"] },
+  { name:"Rapier",         dmg:"1d8+MOD", type:"piercing",    props:"Finesse",                              mastery:"Vex",    cat:"Martial Melee", tags:["weapon","melee","finesse"] },
+  { name:"Scimitar",       dmg:"1d6+MOD", type:"slashing",    props:"Finesse, Light",                       mastery:"Nick",   cat:"Martial Melee", tags:["weapon","melee","finesse","light"] },
+  { name:"Shortsword",     dmg:"1d6+MOD", type:"piercing",    props:"Finesse, Light",                       mastery:"Vex",    cat:"Martial Melee", tags:["weapon","melee","finesse","light"] },
+  { name:"Trident",        dmg:"1d8+MOD", type:"piercing",    props:"Thrown (20/60), Versatile (1d10)",     mastery:"Topple", cat:"Martial Melee", tags:["weapon","melee","thrown","versatile"] },
+  { name:"Warhammer",      dmg:"1d8+MOD", type:"bludgeoning", props:"Versatile (1d10)",                     mastery:"Push",   cat:"Martial Melee", tags:["weapon","melee","versatile"] },
+  { name:"War Pick",       dmg:"1d8+MOD", type:"piercing",    props:"Versatile (1d10)",                     mastery:"Sap",    cat:"Martial Melee", tags:["weapon","melee","versatile"] },
+  { name:"Whip",           dmg:"1d4+MOD", type:"slashing",    props:"Finesse, Reach",                       mastery:"Slow",   cat:"Martial Melee", tags:["weapon","melee","finesse","reach"] },
+  // Martial Ranged
+  { name:"Blowgun",        dmg:"1",       type:"piercing",    props:"Ammunition (25/100), Loading",         mastery:"Vex",    cat:"Martial Ranged", tags:["weapon","ranged","ammunition","loading"] },
+  { name:"Hand Crossbow",  dmg:"1d6+MOD", type:"piercing",    props:"Ammunition (30/120), Light, Loading",  mastery:"Vex",    cat:"Martial Ranged", tags:["weapon","ranged","ammunition","light","loading"] },
+  { name:"Heavy Crossbow", dmg:"1d10+MOD",type:"piercing",    props:"Ammunition (100/400), Heavy, Loading, Two-Handed", mastery:"Push", cat:"Martial Ranged", tags:["weapon","ranged","ammunition","heavy","loading","two-handed"] },
+  { name:"Longbow",        dmg:"1d8+MOD", type:"piercing",    props:"Ammunition (150/600), Heavy, Two-Handed", mastery:"Slow", cat:"Martial Ranged", tags:["weapon","ranged","ammunition","heavy","two-handed"] },
+  { name:"Musket",         dmg:"1d12+MOD",type:"piercing",    props:"Ammunition (40/120), Loading, Two-Handed", mastery:"Slow", cat:"Martial Ranged", tags:["weapon","ranged","ammunition","loading","two-handed"] },
+  { name:"Pistol",         dmg:"1d10+MOD",type:"piercing",    props:"Ammunition (30/90), Loading",          mastery:"Vex",    cat:"Martial Ranged", tags:["weapon","ranged","ammunition","loading"] },
+];
+
+const MASTERY_DESCRIPTIONS = {
+  Cleave: "On a hit, make one extra melee attack against a second creature within 5 ft of the first (no ability mod to damage). Once per turn.",
+  Graze:  "If your attack misses, the target still takes damage equal to your ability modifier (same type as the weapon).",
+  Nick:   "The extra attack of the Light property can be made as part of the Attack action instead of a Bonus Action. Once per turn.",
+  Push:   "On a hit, push the creature up to 10 ft straight away (Large or smaller).",
+  Sap:    "On a hit, the creature has Disadvantage on its next attack roll before the start of your next turn.",
+  Slow:   "On a hit that deals damage, reduce the creature's Speed by 10 ft until the start of your next turn.",
+  Topple: "On a hit, force a CON save (DC 8 + ability mod + PB) or the creature falls Prone.",
+  Vex:    "On a hit that deals damage, you have Advantage on your next attack roll against that creature before the end of your next turn."
+};
+
+// 2024 combat feats (PHB ch. 5) — added to a character as editable Options
+// via the quick-pick in Edit → Options. Note-only feats are rules reminders
+// that show up in the resolution steps; Great Weapon Master actually adds damage.
+const FEAT_LIBRARY = [
+  { name: "Sharpshooter (feat)",
+    description: "Ranged weapon attacks ignore Half and Three-Quarters Cover; no Disadvantage from shooting within 5 ft of an enemy or at long range.",
+    applies: { mode: "tags", tags: ["ranged"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Ignore Half/Three-Quarters Cover. No Disadvantage for shooting in melee or at long range." } },
+  { name: "Great Weapon Master (feat)",
+    description: "When you hit with a Heavy weapon as part of the Attack action, deal extra damage equal to your Proficiency Bonus. Hew: after a crit or a kill with a melee weapon, one extra attack as a Bonus Action.",
+    applies: { mode: "tags", tags: ["heavy"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { dice: [{ expr: "PB", type: "" }],
+      note: "Only during the Attack action. Hew: crit or kill → one Bonus Action attack with the same weapon." } },
+  { name: "Crossbow Expert (feat)",
+    description: "Ignore the Loading property of crossbows; no Disadvantage for shooting a crossbow within 5 ft; the Light-property extra attack with a light crossbow adds your ability modifier.",
+    applies: { mode: "tags", tags: ["loading"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Ignore Loading; no Disadvantage in melee with crossbows." } },
+  { name: "Dual Wielder (feat)",
+    description: "After attacking with a Light weapon, one extra Bonus Action attack with a different non-Two-Handed melee weapon (no ability mod to its damage). Quick Draw: draw/stow two weapons at once.",
+    applies: { mode: "tags", tags: ["light"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Extra Bonus Action attack with a different one-handed melee weapon; don't add your ability modifier to its damage." } },
+  { name: "Savage Attacker (feat)",
+    description: "Once per turn when you hit with a weapon, roll the weapon's damage dice twice and use either roll.",
+    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Once per turn: roll the weapon's damage dice twice, keep the roll you like." } },
+  { name: "Piercer (feat)",
+    description: "Once per turn, reroll one damage die of a Piercing attack. Crits with Piercing damage roll one extra damage die.",
+    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Piercing damage only: once per turn reroll one damage die. On a crit, roll one additional damage die." } },
+  { name: "Slasher (feat)",
+    description: "Once per turn, a Slashing hit reduces the target's Speed by 10 ft. Slashing crits give the target Disadvantage on attack rolls until your next turn.",
+    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Slashing damage only: once per turn −10 ft Speed. Crit: target has Disadvantage on attacks until your next turn." } },
+  { name: "Crusher (feat)",
+    description: "Once per turn, a Bludgeoning hit moves the target 5 ft. Bludgeoning crits: attack rolls against the target have Advantage until your next turn.",
+    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Bludgeoning damage only: once per turn move the target 5 ft. Crit: everyone attacks it with Advantage until your next turn." } },
+  { name: "Polearm Master (feat)",
+    description: "After the Attack action with a Quarterstaff, Spear, or Heavy+Reach weapon: Bonus Action butt-end attack (d4 bludgeoning). Reaction attack when a creature enters your reach.",
+    applies: { mode: "tags", tags: ["melee"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Bonus Action: butt-end attack, 1d4 {MOD} bludgeoning. Reaction: attack creatures entering your reach." } },
+  { name: "Spell Sniper (feat)",
+    description: "Spell attack rolls ignore Half and Three-Quarters Cover; no Disadvantage for casting within 5 ft of an enemy; +60 ft range on attack-roll spells (10 ft+).",
+    applies: { mode: "tags", tags: ["spell"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Ignore Half/Three-Quarters Cover; no Disadvantage in melee; range +60 ft." } },
+  { name: "Elemental Adept (feat)",
+    description: "Choose Acid, Cold, Fire, Lightning, or Thunder: your spells ignore Resistance to it, and damage dice of that type treat 1s as 2s.",
+    applies: { mode: "tags", tags: ["spell"], actionIds: [] }, requires: "any", defaultOn: true,
+    effects: { note: "Chosen damage type: ignores Resistance; treat any 1 on a damage die as a 2." } },
+];
+
+/* ============================================================
+   SECTION 2: UTILITIES
+   ============================================================ */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => [...document.querySelectorAll(sel)];
+const uid = () => Math.random().toString(36).slice(2, 10);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const mod = score => Math.floor((score - 10) / 2);
+const fmtMod = m => (m >= 0 ? "+" + m : String(m));
+const profBonus = level => Math.ceil(level / 4) + 1;
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+/* ============================================================
+   SECTION 3: DICE EXPRESSION LANGUAGE
+   ------------------------------------------------------------
+   Grammar: terms joined by + or -.  Each term is either
+     <count>d<size>   e.g. 3d6, Ld6, ceil(L/2)d6
+   or a flat value    e.g. 4, L, PB, MOD, DEX
+   Symbols resolved against a character context:
+     L   = total character level      PB  = proficiency bonus
+     MOD = the action's attack/spellcasting ability modifier
+     STR DEX CON INT WIS CHA = that ability's modifier
+     ceil(X/2) floor(X/2) around any symbol or number
+   ============================================================ */
+function resolveSymbol(sym, ctx) {
+  sym = sym.trim();
+  let m;
+  if ((m = sym.match(/^(ceil|floor)\(\s*(.+?)\s*\/\s*(\d+)\s*\)$/i))) {
+    const inner = resolveSymbol(m[2], ctx);
+    if (inner === null) return null;
+    const v = inner / parseInt(m[3], 10);
+    return m[1].toLowerCase() === "ceil" ? Math.ceil(v) : Math.floor(v);
+  }
+  if (/^\d+$/.test(sym)) return parseInt(sym, 10);
+  const u = sym.toUpperCase();
+  if (u === "L") return ctx.level;
+  if (u === "PB") return ctx.pb;
+  if (u === "MOD") return ctx.mod;
+  const ab = u.toLowerCase();
+  if (ABILITIES.includes(ab)) return ctx.mods[ab];
+  return null; // unknown symbol
+}
+
+// Parse "expr" into terms: [{sign, count, size}] (size=0 → flat term of value count)
+function parseDice(expr, ctx) {
+  const out = { terms: [], errors: [] };
+  if (!expr || !expr.trim()) return out;
+  // tokenize into signed chunks
+  const chunks = expr.replace(/\s+/g, "").replace(/-/g, "+-").split("+").filter(c => c !== "");
+  for (let chunk of chunks) {
+    let sign = 1;
+    if (chunk.startsWith("-")) { sign = -1; chunk = chunk.slice(1); }
+    const dm = chunk.match(/^(.*?)[dD](\d+)$/);
+    if (dm) {
+      const countSym = dm[1] === "" ? "1" : dm[1];
+      const count = resolveSymbol(countSym, ctx);
+      if (count === null) { out.errors.push(chunk); continue; }
+      out.terms.push({ sign, count: Math.max(0, count), size: parseInt(dm[2], 10) });
+    } else {
+      const v = resolveSymbol(chunk, ctx);
+      if (v === null) { out.errors.push(chunk); continue; }
+      out.terms.push({ sign, count: v, size: 0 });
+    }
+  }
+  return out;
+}
+
+function diceStats(terms, { crit = false } = {}) {
+  let min = 0, max = 0, avg = 0;
+  for (const t of terms) {
+    const mult = t.sign;
+    if (t.size === 0) { min += mult * t.count; max += mult * t.count; avg += mult * t.count; }
+    else {
+      const n = t.count * (crit ? 2 : 1);
+      // negative dice (e.g. Cunning Strike forgoing Sneak dice) subtract
+      if (mult > 0) { min += n; max += n * t.size; avg += n * (t.size + 1) / 2; }
+      else { min -= n * t.size; max -= n; avg -= n * (t.size + 1) / 2; }
+    }
+  }
+  return { min, max, avg: Math.round(avg * 10) / 10 };
+}
+
+function fmtTerms(terms, { crit = false } = {}) {
+  const parts = [];
+  for (const t of terms) {
+    let s;
+    if (t.size === 0) { if (t.count === 0) continue; s = String(Math.abs(t.count)); }
+    else { const n = t.count * (crit ? 2 : 1); if (n === 0) continue; s = n + "d" + t.size; }
+    const neg = (t.size === 0 ? t.count * t.sign : t.sign) < 0;
+    parts.push((parts.length ? (neg ? " − " : " + ") : (neg ? "−" : "")) + s);
+  }
+  return parts.join("") || "0";
+}
+
+function rollTerms(terms, { crit = false } = {}) {
+  let total = 0; const detail = [];
+  for (const t of terms) {
+    if (t.size === 0) { total += t.sign * t.count; if (t.count !== 0) detail.push({ flat: t.sign * t.count }); }
+    else {
+      const n = t.count * (crit ? 2 : 1);
+      for (let i = 0; i < n; i++) {
+        const r = 1 + Math.floor(Math.random() * t.size);
+        total += t.sign * r;
+        detail.push({ die: t.size, roll: r, sign: t.sign });
+      }
+    }
+  }
+  return { total, detail };
+}
+
+function rollD20(advState) { // advState: -1 dis, 0 straight, 1 adv
+  const a = 1 + Math.floor(Math.random() * 20);
+  if (advState === 0) return { rolls: [a], pick: a };
+  const b = 1 + Math.floor(Math.random() * 20);
+  const pick = advState > 0 ? Math.max(a, b) : Math.min(a, b);
+  return { rolls: [a, b], pick };
+}
+/* ============================================================
+   SECTION 4: STORAGE & CHARACTER MODEL
+   ============================================================ */
+const STORE_KEY = "dnd-companion-v1";
+let DB = null;
+
+function freshState() {
+  return {
+    hp: 0, tempHp: 0, hitDiceUsed: 0,
+    slotsUsed: [0,0,0,0,0,0,0,0,0], pactUsed: 0,
+    res: {}, econ: { action:false, bonus:false, reaction:false },
+    flags: [], perTurnUsed: {}, log: []
+  };
+}
+
+function blankCharacter(name) {
+  return {
+    id: uid(), name: name || "New Character",
+    portrait: null,
+    classes: [{ cls: "Rogue", subclass: "", level: 1 }],
+    casterType: "auto", spellAbility: "int",
+    abilities: { str:10, dex:10, con:10, int:10, wis:10, cha:10 },
+    ac: 10, speed: 30, maxHp: 10, initExtra: 0, hitDie: "d8",
+    skills: {}, equipment: [], coins: { pp:0, gp:0, ep:0, sp:0, cp:0 },
+    resources: [], actions: [], options: [],
+    state: Object.assign(freshState(), { hp: 10 })
+  };
+}
+
+function totalLevel(ch) { return ch.classes.reduce((s, c) => s + (c.level || 0), 0) || 1; }
+
+function casterTypeOf(ch) {
+  if (ch.casterType && ch.casterType !== "auto") return ch.casterType;
+  // auto: take the "biggest" caster type among classes (single-class assumption)
+  let best = "none";
+  const rank = { none:0, third:1, pact:2, half:3, full:4 };
+  for (const c of ch.classes) {
+    const t = CLASSES[c.cls] || "none";
+    if (rank[t] > rank[best]) best = t;
+  }
+  return best;
+}
+
+function slotsFor(ch) {
+  const t = casterTypeOf(ch);
+  if (t === "pact" || t === "none") return [];
+  const row = SLOT_TABLES[t] && SLOT_TABLES[t][clamp(totalLevel(ch), 1, 20)];
+  return row || [];
+}
+function pactFor(ch) {
+  return casterTypeOf(ch) === "pact" ? PACT_TABLE[clamp(totalLevel(ch), 1, 20)] : null;
+}
+
+function contextOf(ch, action) {
+  const mods = {};
+  for (const a of ABILITIES) mods[a] = mod(ch.abilities[a]);
+  const L = totalLevel(ch);
+  const pb = profBonus(L);
+  let abilityKey = action ? action.ability : "none";
+  if (abilityKey === "auto" && action) {
+    const tags = action.tags || [];
+    if (action.kind === "spell") abilityKey = "spell";
+    else if (tags.includes("finesse")) abilityKey = mods.dex >= mods.str ? "dex" : "str";
+    else if (tags.includes("ranged")) abilityKey = "dex";
+    else abilityKey = "str";
+  }
+  if (abilityKey === "spell") abilityKey = ch.spellAbility || "int";
+  const m = ABILITIES.includes(abilityKey) ? mods[abilityKey] : 0;
+  const spellMod = mods[ch.spellAbility || "int"];
+  return { level: L, pb, mods, mod: m, abilityKey, spellMod, dc: 8 + pb + spellMod };
+}
+
+function skillLevel(ch, name) { return (ch.skills && ch.skills[name]) || 0; }
+function skillMod(ch, name) {
+  return mod(ch.abilities[SKILLS[name]]) + skillLevel(ch, name) * profBonus(totalLevel(ch));
+}
+function passivePerception(ch) { return 10 + skillMod(ch, "Perception"); }
+
+function saveDB() { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      DB = JSON.parse(raw);
+      if (DB && Array.isArray(DB.characters) && DB.characters.length) { migrateDB(); return; }
+    }
+  } catch (e) { console.warn("load failed", e); }
+  DB = { version: 1, characters: seedCharacters(), currentId: null, settings: { useResources: false } };
+  DB.currentId = DB.characters[0].id;
+  saveDB();
+}
+
+// Keep older saved data working when the schema grows.
+function migrateDB() {
+  DB.settings = Object.assign({ useResources: false }, DB.settings || {});
+  for (const ch of DB.characters) {
+    if (ch.portrait === undefined) ch.portrait = ch.name.startsWith("Sylas") ? SYLAS_PORTRAIT : null;
+  }
+  if ((DB.version || 1) < 2) { // v2: feat library — give the sample rogue his Sharpshooter
+    for (const ch of DB.characters) {
+      if (ch.name.startsWith("Sylas") && !ch.options.some(o => o.name.startsWith("Sharpshooter")))
+        ch.options.push(featOption("Sharpshooter"));
+    }
+    DB.version = 2;
+  }
+  if ((DB.version || 1) < 3) { // v3: skills, equipment, coins
+    for (const ch of DB.characters) {
+      ch.skills = ch.skills || {};
+      ch.equipment = ch.equipment || [];
+      ch.coins = ch.coins || { pp:0, gp:0, ep:0, sp:0, cp:0 };
+      if (ch.name.startsWith("Sylas") && !Object.keys(ch.skills).length) {
+        ch.skills = SAMPLE_KIT.rogue.skills;
+        if (!ch.equipment.length) ch.equipment = SAMPLE_KIT.rogue.equipment.map(e => ({ id: uid(), name: e[0], qty: e[1] }));
+        if (!COINS.some(c => ch.coins[c])) ch.coins = Object.assign({}, SAMPLE_KIT.rogue.coins);
+      }
+    }
+    DB.version = 3;
+  }
+  saveDB();
+}
+
+// Global party setting: when off, class resources (Ki, Rage, Channel Divinity …)
+// are hidden everywhere and never charged — only spell slots are tracked.
+function useResources() { return !DB || !DB.settings || DB.settings.useResources === true; }
+
+function currentChar() {
+  return DB.characters.find(c => c.id === DB.currentId) || DB.characters[0];
+}
+
+function logEvent(ch, msg) {
+  ch.state.log.unshift({ t: Date.now(), msg });
+  ch.state.log = ch.state.log.slice(0, 25);
+}
+
+/* ============================================================
+   SECTION 5: SEED DATA (2024 PHB)
+   ============================================================ */
+// Sylas' portrait (embedded so the sample character ships with art). Injected below.
+const SYLAS_PORTRAIT = "data:image/jpeg;base64,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";
+function weaponAction(libName, overrides) {
+  const w = WEAPON_LIBRARY.find(x => x.name === libName);
+  return Object.assign({
+    id: uid(), name: w.name, kind: "weapon", time: "action",
+    ability: "auto", attack: "attack", proficient: true, attackExtra: 0,
+    saveAbility: "dex", saveHalf: false,
+    damage: [{ expr: w.dmg, type: w.type }],
+    spellLevel: null, upcast: null, count: 1, countLabel: "", countScale: "none",
+    damageScale: "none", concentration: false, oncePerTurn: false, setFlags: [], costs: [],
+    tags: w.tags.slice(),
+    description: `${w.cat}. ${w.props}. Mastery: ${w.mastery}.`,
+    procedure: `Mastery (${w.mastery}): ${MASTERY_DESCRIPTIONS[w.mastery]}`
+  }, overrides || {});
+}
+
+function spellAction(o) {
+  return Object.assign({
+    id: uid(), kind: "spell", time: "action", ability: "spell",
+    attack: "none", proficient: true, attackExtra: 0,
+    saveAbility: "dex", saveHalf: true,
+    damage: [], spellLevel: 1, upcast: null,
+    count: 1, countLabel: "", countScale: "none", damageScale: "none",
+    concentration: false, oncePerTurn: false, setFlags: [], costs: [],
+    tags: ["spell"], description: "", procedure: ""
+  }, o);
+}
+
+function featureAction(o) {
+  return Object.assign({
+    id: uid(), kind: "feature", time: "action", ability: "none",
+    attack: "none", proficient: true, attackExtra: 0,
+    saveAbility: "dex", saveHalf: false,
+    damage: [], spellLevel: null, upcast: null,
+    count: 1, countLabel: "", countScale: "none", damageScale: "none",
+    concentration: false, oncePerTurn: false, setFlags: [], costs: [],
+    tags: [], description: "", procedure: ""
+  }, o);
+}
+
+function makeOption(o) {
+  return Object.assign({
+    id: uid(), name: "", description: "",
+    applies: { mode: "all", tags: [], actionIds: [] },
+    requires: "any", defaultOn: false,
+    effects: {
+      dice: [], advantage: false, disadvantage: false, autoCrit: false,
+      slotCost: 0, upcast: null, resourceCosts: [],
+      time: null, speedZero: false, oncePerTurn: false, setFlags: [], note: ""
+    }
+  }, o, { effects: Object.assign({
+      dice: [], advantage: false, disadvantage: false, autoCrit: false,
+      slotCost: 0, upcast: null, resourceCosts: [],
+      time: null, speedZero: false, oncePerTurn: false, setFlags: [], note: ""
+    }, o.effects || {}) });
+}
+
+// Skills / equipment / coin for the sample characters (also used by migration).
+const SAMPLE_KIT = {
+  rogue: {
+    skills: { "Stealth":2, "Sleight of Hand":2, "Acrobatics":1, "Perception":1, "Deception":1, "Insight":1 },
+    equipment: [["Thieves' Tools",1],["Poisoner's Kit",1],["Disguise Kit",1],["Arrows",20],["Crossbow Bolts",20],["Burglar's Pack",1],["Caltrops (bag)",1]],
+    coins: { pp:0, gp:25, ep:0, sp:30, cp:0 }
+  },
+  cleric: {
+    skills: { "Insight":1, "Religion":1, "Medicine":1, "Persuasion":1 },
+    equipment: [["Holy Symbol",1],["Priest's Pack",1],["Shield",1],["Healer's Kit",1]],
+    coins: { pp:0, gp:15, ep:0, sp:10, cp:0 }
+  },
+  wizard: {
+    skills: { "Arcana":1, "History":1, "Investigation":1, "Insight":1 },
+    equipment: [["Spellbook",1],["Arcane Focus (crystal)",1],["Scholar's Pack",1],["Ink & Quill",1]],
+    coins: { pp:0, gp:10, ep:0, sp:5, cp:20 }
+  },
+  paladin: {
+    skills: { "Athletics":1, "Persuasion":1, "Intimidation":1, "Religion":1 },
+    equipment: [["Shield",1],["Holy Symbol",1],["Priest's Pack",1],["Javelins",3]],
+    coins: { pp:0, gp:20, ep:0, sp:0, cp:0 }
+  }
+};
+function applyKit(ch, kit) {
+  ch.skills = Object.assign({}, kit.skills);
+  ch.equipment = kit.equipment.map(e => ({ id: uid(), name: e[0], qty: e[1] }));
+  ch.coins = Object.assign({}, kit.coins);
+}
+
+// Instantiate a feat from FEAT_LIBRARY as a regular (editable) Option.
+function featOption(name, overrides) {
+  const f = FEAT_LIBRARY.find(x => x.name === name || x.name.startsWith(name));
+  return makeOption(Object.assign(JSON.parse(JSON.stringify(f)), overrides || {}));
+}
+
+function seedRogue() {
+  const ch = blankCharacter("Sylas (Rogue Assassin)");
+  ch.classes = [{ cls: "Rogue", subclass: "Assassin", level: 5 }];
+  ch.abilities = { str:10, dex:18, con:14, int:12, wis:13, cha:8 };
+  ch.ac = 15; ch.speed = 30; ch.maxHp = 38; ch.hitDie = "d8";
+  ch.spellAbility = "int";
+  ch.portrait = SYLAS_PORTRAIT;
+  applyKit(ch, SAMPLE_KIT.rogue);
+  ch.actions = [
+    weaponAction("Shortsword"),
+    weaponAction("Dagger"),
+    weaponAction("Shortbow"),
+    weaponAction("Hand Crossbow"),
+    featureAction({
+      name: "Cunning Action", time: "bonus",
+      description: "Dash, Disengage, or Hide as a Bonus Action.",
+      procedure: "Choose one: Dash (double move), Disengage (no opportunity attacks), or Hide (Stealth check vs. passive Perception)."
+    }),
+    featureAction({
+      name: "Uncanny Dodge", time: "reaction",
+      description: "Halve the damage of an attack that hits you (attacker must be visible).",
+      procedure: "When hit by an attack roll you can see: use your Reaction, take half the attack's total damage (round down)."
+    })
+  ];
+  ch.options = [
+    makeOption({
+      name: "Sneak Attack",
+      description: "Once per turn: extra damage with a Finesse or Ranged weapon if you have Advantage, or if an ally is within 5 ft of the target (and you don't have Disadvantage).",
+      applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+      effects: { dice: [{ expr: "ceil(L/2)d6", type: "" }], oncePerTurn: true,
+        note: "Needs Advantage OR an ally within 5 ft of the target (and no Disadvantage). Damage type = weapon's type." }
+    }),
+    makeOption({
+      name: "Steady Aim",
+      description: "Bonus Action: Advantage on your next attack this turn. Only if you haven't moved; your Speed becomes 0 until end of turn.",
+      applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack",
+      effects: { advantage: true, time: "bonus", speedZero: true,
+        setFlags: [{ label: "Speed 0 (Steady Aim)", clear: "turn" }],
+        note: "Usable only if you haven't moved this turn." }
+    }),
+    makeOption({
+      name: "Assassinate (first round)",
+      description: "First round of combat: Advantage on attacks vs. creatures that haven't acted. If your Sneak Attack hits during that round, +Rogue level extra damage (weapon's type). You also have Advantage on Initiative.",
+      applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack",
+      effects: { advantage: true, dice: [{ expr: "L", type: "" }],
+        note: "Extra {L} damage only if the attack includes a Sneak Attack hit, and only in round 1 vs. a creature that hasn't taken its turn." }
+    }),
+    makeOption({
+      name: "Cunning Strike: Poison",
+      description: "Forgo 1d6 Sneak Attack: target makes a CON save or is Poisoned for 1 minute (repeats save each turn). Requires a Poisoner's Kit.",
+      applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+      effects: { dice: [{ expr: "-1d6", type: "" }],
+        note: "Only together with Sneak Attack. CON save DC {DC-DEX} or Poisoned (1 min, save ends each turn)." }
+    }),
+    makeOption({
+      name: "Cunning Strike: Trip",
+      description: "Forgo 1d6 Sneak Attack: target (Large or smaller) makes a DEX save or falls Prone.",
+      applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+      effects: { dice: [{ expr: "-1d6", type: "" }],
+        note: "Only together with Sneak Attack. DEX save DC {DC-DEX} or Prone (Large or smaller)." }
+    }),
+    makeOption({
+      name: "Cunning Strike: Withdraw",
+      description: "Forgo 1d6 Sneak Attack: right after the attack, move up to half your Speed without provoking Opportunity Attacks.",
+      applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+      effects: { dice: [{ expr: "-1d6", type: "" }],
+        note: "Only together with Sneak Attack." }
+    }),
+    featOption("Sharpshooter")
+  ];
+  ch.state = Object.assign(freshState(), { hp: ch.maxHp });
+  return ch;
+}
+
+function seedCleric() {
+  const ch = blankCharacter("Mira (Life Cleric)");
+  ch.classes = [{ cls: "Cleric", subclass: "Life Domain", level: 5 }];
+  ch.abilities = { str:14, dex:10, con:14, int:10, wis:16, cha:12 };
+  ch.ac = 18; ch.speed = 30; ch.maxHp = 38; ch.hitDie = "d8";
+  ch.spellAbility = "wis";
+  applyKit(ch, SAMPLE_KIT.cleric);
+  ch.resources = [{ id: uid(), name: "Channel Divinity", max: 2, reset: "short", style: "pips" }];
+  ch.actions = [
+    weaponAction("Mace"),
+    spellAction({ name: "Sacred Flame", spellLevel: 0, attack: "save", saveAbility: "dex", saveHalf: false,
+      damage: [{ expr: "1d8", type: "radiant" }], damageScale: "cantrip",
+      description: "Radiance descends on a creature within 60 ft. DEX save or take the damage; no benefit from half/three-quarters cover.",
+      procedure: "Target makes a DEX save vs. your spell DC. On a fail it takes the damage; on a success, nothing." }),
+    spellAction({ name: "Toll the Dead", spellLevel: 0, attack: "save", saveAbility: "wis", saveHalf: false,
+      damage: [{ expr: "1d8", type: "necrotic" }], damageScale: "cantrip",
+      description: "A dolorous bell tolls for one creature within 60 ft. WIS save or take 1d8 necrotic — 1d12 instead if it's missing any HP.",
+      procedure: "WIS save vs. your spell DC. On a fail: the damage below — but roll d12s instead of d8s if the target is missing hit points." }),
+    spellAction({ name: "Guiding Bolt", spellLevel: 1, attack: "attack",
+      damage: [{ expr: "4d6", type: "radiant" }], upcast: { mode: "dice", expr: "1d6", type: "radiant" },
+      description: "Ranged spell attack, 120 ft. On a hit: 4d6 radiant, and the next attack roll against the target before the end of your next turn has Advantage.",
+      procedure: "Make a ranged spell attack. On a hit, apply damage and tell the table: next attack against that target has Advantage." }),
+    spellAction({ name: "Cure Wounds", spellLevel: 1, attack: "none",
+      damage: [{ expr: "2d8+MOD", type: "healing" }], upcast: { mode: "dice", expr: "2d8", type: "healing" },
+      description: "Touch a creature: it regains 2d8 + spellcasting modifier HP.",
+      procedure: "Touch the target and roll the healing. It regains that many hit points." }),
+    spellAction({ name: "Healing Word", spellLevel: 1, time: "bonus", attack: "none",
+      damage: [{ expr: "2d4+MOD", type: "healing" }], upcast: { mode: "dice", expr: "2d4", type: "healing" },
+      description: "Bonus Action, 60 ft: a creature you can see regains 2d4 + spellcasting modifier HP.",
+      procedure: "Point at a creature within 60 ft and roll the healing." }),
+    spellAction({ name: "Spiritual Weapon", spellLevel: 2, time: "bonus", attack: "attack", concentration: true,
+      damage: [{ expr: "1d8+MOD", type: "force" }], upcast: { mode: "dice", expr: "1d8", type: "force" },
+      setFlags: [{ label: "Concentration: Spiritual Weapon", clear: "manual" }],
+      description: "Bonus Action: summon a spectral weapon (60 ft). Melee spell attack, 1d8 + mod force. Later turns: Bonus Action to move it 20 ft and attack again. Concentration, 1 min.",
+      procedure: "Make a melee spell attack against a creature within 5 ft of the weapon. Re-attack each turn as a Bonus Action." })
+  ];
+  ch.options = [
+    makeOption({
+      name: "Preserve Life (Channel Divinity)",
+      description: "Action: restore HP equal to 5 × Cleric level, split among creatures within 30 ft (only up to half their HP max each).",
+      applies: { mode: "actions", tags: [], actionIds: [] }, requires: "any",
+      effects: { note: "" }
+    })
+  ];
+  ch.state = Object.assign(freshState(), { hp: ch.maxHp });
+  return ch;
+}
+
+function seedWizard() {
+  const ch = blankCharacter("Eldrin (Wizard)");
+  ch.classes = [{ cls: "Wizard", subclass: "Evoker", level: 5 }];
+  ch.abilities = { str:8, dex:14, con:14, int:16, wis:12, cha:10 };
+  ch.ac = 12; ch.speed = 30; ch.maxHp = 27; ch.hitDie = "d6";
+  ch.spellAbility = "int";
+  applyKit(ch, SAMPLE_KIT.wizard);
+  ch.resources = [{ id: uid(), name: "Arcane Recovery", max: 1, reset: "long", style: "pips" }];
+  ch.actions = [
+    weaponAction("Dagger"),
+    spellAction({ name: "Fire Bolt", spellLevel: 0, attack: "attack",
+      damage: [{ expr: "1d10", type: "fire" }], damageScale: "cantrip",
+      description: "Ranged spell attack, 120 ft. 1d10 fire; flammable objects ignite.",
+      procedure: "Make a ranged spell attack. On a hit, apply the fire damage." }),
+    spellAction({ name: "Mind Sliver", spellLevel: 0, attack: "save", saveAbility: "int", saveHalf: false,
+      damage: [{ expr: "1d6", type: "psychic" }], damageScale: "cantrip",
+      description: "INT save or take 1d6 psychic and subtract 1d4 from the target's next save before the end of your next turn.",
+      procedure: "INT save vs. your spell DC. On a fail: damage, and the target subtracts 1d4 from its next saving throw." }),
+    spellAction({ name: "Magic Missile", spellLevel: 1, attack: "none",
+      damage: [{ expr: "1d4+1", type: "force" }], count: 3, countLabel: "darts",
+      upcast: { mode: "count" },
+      description: "Three darts hit automatically (120 ft), each 1d4+1 force. Split among targets as you like.",
+      procedure: "No roll to hit — the darts strike automatically. Roll damage per dart (or roll once and multiply, if your table plays it that way)." }),
+    spellAction({ name: "Scorching Ray", spellLevel: 2, attack: "attack",
+      damage: [{ expr: "2d6", type: "fire" }], count: 3, countLabel: "rays",
+      upcast: { mode: "count" },
+      description: "Hurl three rays (120 ft). Separate ranged spell attack per ray; 2d6 fire each.",
+      procedure: "Make a separate attack roll for each ray. Apply 2d6 fire per hit." }),
+    spellAction({ name: "Fireball", spellLevel: 3, attack: "save", saveAbility: "dex", saveHalf: true,
+      damage: [{ expr: "8d6", type: "fire" }], upcast: { mode: "dice", expr: "1d6", type: "fire" },
+      description: "20-ft-radius explosion, 150 ft range. DEX save: 8d6 fire, half on success. Ignites flammables.",
+      procedure: "Everyone in the 20-ft sphere makes a DEX save vs. your spell DC. Fail = full damage, success = half." }),
+    spellAction({ name: "Shield", spellLevel: 1, time: "reaction", attack: "none",
+      description: "Reaction when hit or targeted by Magic Missile: +5 AC until your next turn; Magic Missile can't hit you.",
+      procedure: "Announce it when an attack hits you — +5 AC may turn the hit into a miss." })
+  ];
+  ch.state = Object.assign(freshState(), { hp: ch.maxHp });
+  return ch;
+}
+
+function seedPaladin() {
+  const ch = blankCharacter("Serra (Paladin)");
+  ch.classes = [{ cls: "Paladin", subclass: "Oath of Devotion", level: 5 }];
+  ch.abilities = { str:16, dex:10, con:14, int:8, wis:12, cha:16 };
+  ch.ac = 20; ch.speed = 30; ch.maxHp = 44; ch.hitDie = "d10";
+  ch.spellAbility = "cha";
+  applyKit(ch, SAMPLE_KIT.paladin);
+  ch.resources = [
+    { id: uid(), name: "Lay on Hands (HP pool)", max: 25, reset: "long", style: "counter" },
+    { id: uid(), name: "Channel Divinity", max: 2, reset: "short", style: "pips" }
+  ];
+  ch.actions = [
+    weaponAction("Longsword", { description: "Martial Melee. Versatile (use 1d10 two-handed). Mastery: Sap.",
+      procedure: "Two-handed? Roll 1d10 instead of 1d8. Mastery (Sap): on a hit, the target has Disadvantage on its next attack roll." }),
+    weaponAction("Javelin"),
+    spellAction({ name: "Cure Wounds", spellLevel: 1, attack: "none",
+      damage: [{ expr: "2d8+MOD", type: "healing" }], upcast: { mode: "dice", expr: "2d8", type: "healing" },
+      description: "Touch a creature: it regains 2d8 + spellcasting modifier HP.",
+      procedure: "Touch the target and roll the healing." }),
+    spellAction({ name: "Divine Favor", spellLevel: 1, time: "bonus", attack: "none",
+      setFlags: [{ label: "Divine Favor (+1d4 radiant on weapon hits)", clear: "manual" }],
+      description: "Bonus Action: for 1 minute your weapon attacks deal +1d4 radiant on a hit. (Toggle the matching option on your attacks.)",
+      procedure: "For the next minute, add the 'Divine Favor' option to your weapon attacks." }),
+    featureAction({ name: "Lay on Hands", time: "bonus",
+      description: "Touch a creature and restore HP from your pool (5 × Paladin level per long rest). 5 points can instead cure the Poisoned condition.",
+      procedure: "Decide how many points to spend, restore that many HP, then subtract them from the Lay on Hands pool on your sheet." })
+  ];
+  ch.options = [
+    makeOption({
+      name: "Divine Smite",
+      description: "Bonus Action spell, cast immediately after hitting with a melee weapon: +2d8 radiant (+1d8 vs. Fiends/Undead). Uses a spell slot; +1d8 per slot level above 1.",
+      applies: { mode: "tags", tags: ["melee"], actionIds: [] }, requires: "attack",
+      effects: { dice: [{ expr: "2d8", type: "radiant" }], slotCost: 1, upcast: { expr: "1d8", type: "radiant" }, time: "bonus",
+        note: "+1d8 radiant if the target is a Fiend or Undead." }
+    }),
+    makeOption({
+      name: "Divine Favor active",
+      description: "Add while the Divine Favor spell is running.",
+      applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack",
+      effects: { dice: [{ expr: "1d4", type: "radiant" }] }
+    }),
+    makeOption({
+      name: "Great Weapon Fighting style",
+      description: "Example of a custom toggle: reroll 1s and 2s on damage dice (two-handed melee). Rules note only — reroll manually.",
+      applies: { mode: "tags", tags: ["two-handed"], actionIds: [] }, requires: "attack",
+      effects: { note: "Reroll any 1 or 2 on the weapon's damage dice (once each)." }
+    })
+  ];
+  ch.state = Object.assign(freshState(), { hp: ch.maxHp });
+  return ch;
+}
+
+function seedCharacters() { return [seedRogue(), seedCleric(), seedWizard(), seedPaladin()]; }
+/* ============================================================
+   SECTION 6: RULES ENGINE — resolution, costs, commit, rests
+   ============================================================ */
+function noteTokens(text, ctx) {
+  return String(text || "")
+    .replace(/\{DC-(STR|DEX|CON|INT|WIS|CHA)\}/gi, (_, ab) => 8 + ctx.pb + ctx.mods[ab.toLowerCase()])
+    .replace(/\{DC\}/g, ctx.dc)
+    .replace(/\{PB\}/g, ctx.pb)
+    .replace(/\{MOD\}/g, fmtMod(ctx.mod))
+    .replace(/\{L\}/g, ctx.level)
+    .replace(/\{(STR|DEX|CON|INT|WIS|CHA)\}/gi, (_, ab) => fmtMod(ctx.mods[ab.toLowerCase()]));
+}
+
+function optionApplies(opt, action) {
+  const a = opt.applies || { mode: "all" };
+  if (opt.requires === "attack" && action.attack !== "attack") return false;
+  if (a.mode === "all") return true;
+  if (a.mode === "tags") return (action.tags || []).some(t => (a.tags || []).includes(t));
+  if (a.mode === "actions") return (a.actionIds || []).includes(action.id);
+  return false;
+}
+
+function cantripTier(level) { return 1 + (level >= 5 ? 1 : 0) + (level >= 11 ? 1 : 0) + (level >= 17 ? 1 : 0); }
+
+function scaleTerms(terms, mult) {
+  return terms.map(t => t.size === 0 ? t : Object.assign({}, t, { count: t.count * mult }));
+}
+
+// Which slot levels can the character still consider (for pickers)? Returns [{lvl, free, max}]
+function slotLevels(ch) {
+  const out = [];
+  const pact = pactFor(ch);
+  if (pact) {
+    out.push({ lvl: pact.lvl, free: pact.n - ch.state.pactUsed, max: pact.n, pact: true });
+    return out;
+  }
+  const slots = slotsFor(ch);
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i] > 0) out.push({ lvl: i + 1, free: slots[i] - (ch.state.slotsUsed[i] || 0), max: slots[i], pact: false });
+  }
+  return out;
+}
+
+/**
+ * Resolve an action + selected options into instructions, dice and costs.
+ * sel = { opts: Set<optionId>, slotLevel: int|null, optSlots: {optionId: int} }
+ */
+function resolveSelection(ch, action, sel) {
+  const ctx = contextOf(ch, action);
+  const r = {
+    ctx, advCount: 0, disCount: 0, autoCrit: false,
+    attackBonus: null, save: null,
+    damage: [],           // [{type, terms}]
+    healing: null,        // {terms}
+    count: action.count || 1, countLabel: action.countLabel || "",
+    costs: [], warnings: [], notes: [], steps: [], errors: []
+  };
+  const isPact = !!pactFor(ch);
+  const baseType = (action.damage[0] && action.damage[0].type) || "damage";
+
+  const addDice = (expr, type) => {
+    const parsed = parseDice(expr, ctx);
+    parsed.errors.forEach(e => r.errors.push(e));
+    if (!parsed.terms.length) return;
+    const ty = type || baseType;
+    if (ty === "healing") {
+      if (!r.healing) r.healing = { terms: [] };
+      r.healing.terms.push(...parsed.terms);
+      return;
+    }
+    let group = r.damage.find(g => g.type === ty);
+    if (!group) { group = { type: ty, terms: [] }; r.damage.push(group); }
+    group.terms.push(...parsed.terms);
+  };
+
+  // --- base damage (with cantrip scaling) ---
+  const tier = cantripTier(ctx.level);
+  for (const d of action.damage) {
+    const parsed = parseDice(d.expr, ctx);
+    parsed.errors.forEach(e => r.errors.push(e));
+    let terms = parsed.terms;
+    if (action.damageScale === "cantrip" && tier > 1) terms = scaleTerms(terms, tier);
+    const ty = d.type || "damage";
+    if (ty === "healing") {
+      if (!r.healing) r.healing = { terms: [] };
+      r.healing.terms.push(...terms);
+    } else {
+      let group = r.damage.find(g => g.type === ty);
+      if (!group) { group = { type: ty, terms: [] }; r.damage.push(group); }
+      group.terms.push(...terms);
+    }
+  }
+  if (action.countScale === "cantrip") r.count = tier;
+
+  // --- action's own casting cost / economy ---
+  if (action.time && action.time !== "none") r.costs.push({ kind: "econ", time: action.time, label: cap(action.time) });
+
+  // --- spell slot + upcast for leveled spells ---
+  if (action.kind === "spell" && action.spellLevel >= 1) {
+    const lvl = sel.slotLevel || action.spellLevel;
+    r.costs.push({ kind: isPact ? "pact" : "slot", level: lvl, label: `Level ${lvl} spell slot${isPact ? " (Pact)" : ""}` });
+    const above = lvl - action.spellLevel;
+    if (above > 0 && action.upcast) {
+      if (action.upcast.mode === "dice") {
+        const parsed = parseDice(action.upcast.expr, ctx);
+        addDiceTerms(r, scaleTerms(parsed.terms, above), action.upcast.type || baseType);
+      } else if (action.upcast.mode === "count") {
+        r.count += above;
+      }
+    }
+    const avail = slotLevels(ch).find(s => s.lvl === lvl);
+    if (!avail || avail.free <= 0) r.warnings.push(`No level ${lvl} slot left!`);
+  }
+
+  // helper used above (defined late but hoisted as function declaration below)
+  function addDiceTerms(res, terms, type) {
+    if (type === "healing") {
+      if (!res.healing) res.healing = { terms: [] };
+      res.healing.terms.push(...terms); return;
+    }
+    let group = res.damage.find(g => g.type === type);
+    if (!group) { group = { type, terms: [] }; res.damage.push(group); }
+    group.terms.push(...terms);
+  }
+
+  // --- attack / save ---
+  if (action.attack === "attack") {
+    r.attackBonus = ctx.mod + (action.proficient ? ctx.pb : 0) + (action.attackExtra || 0);
+  } else if (action.attack === "save") {
+    r.save = { ability: action.saveAbility, dc: ctx.dc, half: action.saveHalf };
+  }
+
+  // --- resource costs on the action itself ---
+  for (const c of (useResources() ? action.costs || [] : [])) {
+    if (c.type === "resource") {
+      const res = ch.resources.find(x => x.id === c.id);
+      if (res) {
+        r.costs.push({ kind: "resource", id: res.id, amount: c.amount || 1, label: `${c.amount || 1} × ${res.name}` });
+        const used = ch.state.res[res.id] || 0;
+        if (used + (c.amount || 1) > res.max) r.warnings.push(`Not enough ${res.name} left!`);
+      }
+    }
+  }
+  if (action.oncePerTurn) {
+    r.costs.push({ kind: "perTurn", id: action.id, label: "Once per turn" });
+    if (ch.state.perTurnUsed[action.id]) r.warnings.push(`${action.name} was already used this turn.`);
+  }
+  for (const f of (action.setFlags || [])) r.costs.push({ kind: "flag", flag: f, label: f.label });
+  if (action.concentration) {
+    const conc = ch.state.flags.find(f => /^Concentration/i.test(f.label));
+    if (conc) r.warnings.push(`Already concentrating (${conc.label.replace(/^Concentration:\s*/i, "")}) — casting this ends it.`);
+    if (!(action.setFlags || []).some(f => /^Concentration/i.test(f.label)))
+      r.costs.push({ kind: "flag", flag: { label: `Concentration: ${action.name}`, clear: "manual" }, label: `Concentration: ${action.name}` });
+  }
+
+  // --- selected options ---
+  for (const opt of ch.options) {
+    if (!sel.opts.has(opt.id)) continue;
+    const fx = opt.effects;
+    if (fx.advantage) r.advCount++;
+    if (fx.disadvantage) r.disCount++;
+    if (fx.autoCrit) r.autoCrit = true;
+    for (const d of (fx.dice || [])) addDice(d.expr, d.type || "");
+    if (fx.slotCost > 0) {
+      const lvl = (sel.optSlots && sel.optSlots[opt.id]) || fx.slotCost;
+      r.costs.push({ kind: isPact ? "pact" : "slot", level: lvl, label: `Level ${lvl} spell slot (${opt.name})` });
+      const above = lvl - fx.slotCost;
+      if (above > 0 && fx.upcast) {
+        const parsed = parseDice(fx.upcast.expr, ctx);
+        addDiceTerms(r, scaleTerms(parsed.terms, above), fx.upcast.type || baseType);
+      }
+      const avail = slotLevels(ch).find(s => s.lvl === lvl);
+      if (!avail || avail.free <= 0) r.warnings.push(`No level ${lvl} slot left for ${opt.name}!`);
+    }
+    for (const c of (useResources() ? fx.resourceCosts || [] : [])) {
+      const res = ch.resources.find(x => x.id === c.id);
+      if (res) {
+        r.costs.push({ kind: "resource", id: res.id, amount: c.amount || 1, label: `${c.amount || 1} × ${res.name} (${opt.name})` });
+        const used = ch.state.res[res.id] || 0;
+        if (used + (c.amount || 1) > res.max) r.warnings.push(`Not enough ${res.name} left!`);
+      }
+    }
+    if (fx.time) r.costs.push({ kind: "econ", time: fx.time, label: `${cap(fx.time)} (${opt.name})` });
+    if (fx.speedZero) r.costs.push({ kind: "speedZero", label: "Speed becomes 0" });
+    for (const f of (fx.setFlags || [])) r.costs.push({ kind: "flag", flag: f, label: f.label });
+    if (fx.oncePerTurn) {
+      r.costs.push({ kind: "perTurn", id: opt.id, label: `Once per turn (${opt.name})` });
+      if (ch.state.perTurnUsed[opt.id]) r.warnings.push(`${opt.name} was already used this turn.`);
+    }
+    if (fx.note) r.notes.push(`<b>${esc(opt.name)}:</b> ${esc(noteTokens(fx.note, ctx))}`);
+  }
+
+  // --- economy warnings ---
+  const econNeeded = { action: 0, bonus: 0, reaction: 0 };
+  for (const c of r.costs) if (c.kind === "econ") econNeeded[c.time]++;
+  for (const t of ["action", "bonus", "reaction"]) {
+    if (econNeeded[t] > 0 && ch.state.econ[t]) r.warnings.push(`${cap(t)} already used this turn.`);
+    if (econNeeded[t] > 1) r.warnings.push(`This combination needs ${econNeeded[t]} × ${cap(t)} — not possible in one turn.`);
+  }
+  if (r.errors.length) r.warnings.push(`Unknown dice symbols: ${r.errors.join(", ")}`);
+
+  // --- advantage state ---
+  r.advState = r.advCount > 0 && r.disCount > 0 ? 0 : (r.advCount > 0 ? 1 : (r.disCount > 0 ? -1 : 0));
+
+  // --- stats over all damage (not healing) ---
+  const allTerms = r.damage.flatMap(g => g.terms);
+  r.stats = diceStats(allTerms);
+  r.statsPerHit = r.stats;
+  if (r.count > 1) r.stats = { min: r.stats.min * r.count, max: r.stats.max * r.count, avg: Math.round(r.stats.avg * r.count * 10) / 10 };
+  r.healStats = r.healing ? diceStats(r.healing.terms) : null;
+
+  // --- instruction steps ---
+  const stepCost = r.costs.filter(c => c.kind !== "flag" && c.kind !== "perTurn").map(c => c.label);
+  if (stepCost.length) r.steps.push(`<b>Cost:</b> ${stepCost.map(esc).join(" · ")}`);
+  const one = (r.countLabel || "hit").replace(/s$/i, ""); // "darts" → "per dart"
+  const perLabel = r.count > 1 ? ` <i>per ${esc(one)}</i>` : "";
+  if (r.attackBonus !== null) {
+    const advTxt = r.advState > 0 ? " with <b>Advantage</b> (roll 2d20, keep highest)"
+                 : r.advState < 0 ? " with <b>Disadvantage</b> (roll 2d20, keep lowest)" : "";
+    const times = r.count > 1 ? ` — one attack roll per ${esc(r.countLabel ? one : "attack")} (${r.count}×)` : "";
+    r.steps.push(`<b>To hit:</b> roll <b>1d20 ${fmtMod(r.attackBonus)}</b>${advTxt}${times}.`);
+  }
+  if (r.save) {
+    const abName = ABILITY_NAMES[r.save.ability] || r.save.ability;
+    const art = /^[aeiou]/i.test(abName) ? "an" : "a";
+    r.steps.push(`<b>Save:</b> target makes ${art} <b>${esc(abName)} save</b> vs. <b>DC ${r.save.dc}</b> — fail: full effect${r.save.half ? ", success: half damage" : ", success: no effect"}.`);
+  }
+  if (r.damage.length) {
+    const dmgTxt = r.damage.map(g => `<b>${fmtTerms(g.terms)}</b> ${esc(g.type)}`).join(" + ");
+    const lead = r.attackBonus !== null ? "On a hit" : (r.save ? "Damage" : "Damage");
+    r.steps.push(`<b class="hit">${lead}:</b> ${dmgTxt}${perLabel}${r.count > 1 ? ` (${r.count} ${esc(r.countLabel || "hits")})` : ""}.`);
+    if (r.attackBonus !== null) {
+      r.steps.push(r.autoCrit
+        ? `<b>Critical:</b> automatic crit — roll all damage dice <b>twice</b>: ${r.damage.map(g => `<b>${fmtTerms(g.terms, { crit: true })}</b> ${esc(g.type)}`).join(" + ")}.`
+        : `<b>On a crit (nat 20):</b> roll all damage dice twice: ${r.damage.map(g => `<b>${fmtTerms(g.terms, { crit: true })}</b> ${esc(g.type)}`).join(" + ")}.`);
+    }
+  }
+  if (r.healing) r.steps.push(`<b>Healing:</b> restore <b>${fmtTerms(r.healing.terms)}</b> HP.`);
+  if (action.procedure) r.notes.unshift(esc(noteTokens(action.procedure, ctx)));
+  return r;
+}
+
+function commitSelection(ch, action, sel, r) {
+  const parts = [];
+  for (const c of r.costs) {
+    if (c.kind === "slot") { ch.state.slotsUsed[c.level - 1] = (ch.state.slotsUsed[c.level - 1] || 0) + 1; parts.push(`L${c.level} slot`); }
+    else if (c.kind === "pact") { ch.state.pactUsed++; parts.push("pact slot"); }
+    else if (c.kind === "resource") { ch.state.res[c.id] = (ch.state.res[c.id] || 0) + c.amount; const res = ch.resources.find(x => x.id === c.id); parts.push(`${c.amount} ${res ? res.name : "resource"}`); }
+    else if (c.kind === "econ") { ch.state.econ[c.time] = true; }
+    else if (c.kind === "speedZero") {
+      if (!ch.state.flags.some(f => f.label.startsWith("Speed 0"))) ch.state.flags.push({ id: uid(), label: "Speed 0 (Steady Aim)", clear: "turn" });
+    }
+    else if (c.kind === "flag") {
+      if (!ch.state.flags.some(f => f.label === c.flag.label)) ch.state.flags.push({ id: uid(), label: c.flag.label, clear: c.flag.clear || "manual" });
+    }
+    else if (c.kind === "perTurn") { ch.state.perTurnUsed[c.id] = true; }
+  }
+  const optNames = ch.options.filter(o => sel.opts.has(o.id)).map(o => o.name);
+  logEvent(ch, `${action.name}${optNames.length ? " + " + optNames.join(", ") : ""}${parts.length ? ` (spent: ${parts.join(", ")})` : ""}`);
+  saveDB();
+}
+
+function newTurn(ch) {
+  ch.state.econ = { action:false, bonus:false, reaction:false };
+  ch.state.perTurnUsed = {};
+  ch.state.flags = ch.state.flags.filter(f => f.clear !== "turn");
+  logEvent(ch, "— New turn —");
+  saveDB();
+}
+function newEncounter(ch) {
+  newTurn(ch);
+  ch.state.flags = ch.state.flags.filter(f => f.clear !== "encounter");
+  logEvent(ch, "— New encounter —");
+  saveDB();
+}
+function shortRest(ch) {
+  ch.state.pactUsed = 0;
+  for (const res of ch.resources) if (res.reset === "short") ch.state.res[res.id] = 0;
+  ch.state.flags = ch.state.flags.filter(f => f.clear !== "rest" && f.clear !== "turn" && f.clear !== "encounter");
+  ch.state.econ = { action:false, bonus:false, reaction:false };
+  ch.state.perTurnUsed = {};
+  logEvent(ch, "— Short rest: short-rest resources & pact slots restored —");
+  saveDB();
+}
+function longRest(ch) {
+  ch.state.hp = ch.maxHp; ch.state.tempHp = 0;
+  ch.state.slotsUsed = [0,0,0,0,0,0,0,0,0]; ch.state.pactUsed = 0;
+  for (const res of ch.resources) ch.state.res[res.id] = 0;
+  ch.state.hitDiceUsed = Math.max(0, ch.state.hitDiceUsed - Math.max(1, Math.floor(totalLevel(ch) / 2)));
+  ch.state.flags = ch.state.flags.filter(f => f.clear === "manual" && !/^Concentration/i.test(f.label));
+  ch.state.econ = { action:false, bonus:false, reaction:false };
+  ch.state.perTurnUsed = {};
+  logEvent(ch, "— Long rest: HP, slots & resources restored —");
+  saveDB();
+}
+/* ============================================================
+   SECTION 7: UI
+   ============================================================ */
+const UI = { tab: "sheet", search: "", filter: "all", editTab: "character", modal: null };
+
+function render() {
+  // header character select
+  $("#charSelect").innerHTML = DB.characters.map(c =>
+    `<option value="${c.id}" ${c.id === DB.currentId ? "selected" : ""}>${esc(c.name)}</option>`).join("");
+  $$("nav.tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === UI.tab));
+  $("#view-sheet").classList.toggle("hidden", UI.tab !== "sheet");
+  $("#view-actions").classList.toggle("hidden", UI.tab !== "actions");
+  $("#view-edit").classList.toggle("hidden", UI.tab !== "edit");
+  if (UI.tab === "sheet") renderSheet();
+  if (UI.tab === "actions") renderActions();
+  if (UI.tab === "edit") renderEdit();
+}
+
+/* ---------------- SHEET ---------------- */
+function pipsHtml(max, used, cb) {
+  let h = `<span class="pips">`;
+  const filled = max - used;
+  for (let i = 0; i < max; i++)
+    h += `<button class="pip ${i < filled ? "" : "empty"}" onclick="${cb}(${i})" title="${i < filled ? "spend" : "restore"}"></button>`;
+  return h + `</span>`;
+}
+
+function renderSheet() {
+  const ch = currentChar();
+  const ctx = contextOf(ch, null);
+  const speedZero = ch.state.flags.some(f => f.label.startsWith("Speed 0"));
+  const clsLine = ch.classes.map(c => `${c.cls}${c.subclass ? " (" + c.subclass + ")" : ""} ${c.level}`).join(" / ");
+  const hpPct = clamp(ch.state.hp / Math.max(1, ch.maxHp) * 100, 0, 100);
+  const hpCls = hpPct <= 25 ? "crit" : hpPct <= 50 ? "low" : "";
+  const slots = slotsFor(ch);
+  const pact = pactFor(ch);
+
+  let slotHtml = "";
+  if (slots.some(n => n > 0)) {
+    slotHtml = slots.map((n, i) => n > 0 ? `<div class="slotrow"><span class="lvl">L${i + 1}</span>${pipsHtml(n, ch.state.slotsUsed[i] || 0, `toggleSlot.bind(null,${i})`)}</div>` : "").join("");
+  } else if (pact) {
+    slotHtml = `<div class="slotrow"><span class="lvl">L${pact.lvl}</span>${pipsHtml(pact.n, ch.state.pactUsed, "togglePact.bind(null)")} <span class="muted">Pact Magic (short rest)</span></div>`;
+  }
+
+  const resHtml = ch.resources.map(res => {
+    const used = ch.state.res[res.id] || 0;
+    const inner = res.style === "counter"
+      ? `<span class="stepper"><button onclick="adjustRes('${res.id}',1)">−</button></span>
+         <b style="min-width:70px;text-align:center">${res.max - used} / ${res.max}</b>
+         <span class="stepper"><button onclick="adjustRes('${res.id}',-1)">+</button></span>`
+      : pipsHtml(res.max, used, `toggleRes.bind(null,'${res.id}')`);
+    return `<div class="slotrow"><span style="min-width:150px;font-weight:600">${esc(res.name)}</span> ${inner}
+      <span class="muted">(${res.reset} rest)</span></div>`;
+  }).join("") || `<span class="muted">No resources — add some in Edit.</span>`;
+
+  const flagsHtml = ch.state.flags.map(f =>
+    `<span class="flag">${esc(f.label)} <button onclick="removeFlag('${f.id}')" title="remove">×</button></span>`).join("")
+    || `<span class="muted">No active effects.</span>`;
+
+  const logHtml = ch.state.log.map(l => `<div>${esc(l.msg)}</div>`).join("") || `<span class="muted">Nothing yet — use an action!</span>`;
+
+  $("#view-sheet").innerHTML = `
+    <div class="card namecard">
+      ${ch.portrait ? `<img class="portrait" src="${ch.portrait}" alt="Portrait of ${esc(ch.name)}">` : `<div class="portrait placeholder">⚔️</div>`}
+      <div style="flex:1;min-width:140px">
+        <b class="charname">${esc(ch.name)}</b>
+        <div class="muted">${esc(clsLine)} · Level ${totalLevel(ch)}</div>
+      </div>
+      <div class="muted" style="text-align:right">Spell DC <b>${ctx.dc}</b><br>Spell atk <b>${fmtMod(ctx.spellMod + ctx.pb)}</b></div>
+    </div>
+
+    <div class="statrow">
+      <div class="stat"><div class="v">${ch.ac}</div><div class="l">AC</div></div>
+      <div class="stat"><div class="v">${fmtMod(ctx.mods.dex + (ch.initExtra || 0))}</div><div class="l">Initiative</div></div>
+      <div class="stat"><div class="v ${speedZero ? "zeroed" : ""}">${speedZero ? 0 : ch.speed}</div><div class="l">Speed</div></div>
+      <div class="stat"><div class="v">${fmtMod(ctx.pb)}</div><div class="l">Prof.</div></div>
+      <div class="stat"><div class="v">${passivePerception(ch)}</div><div class="l">Pass. Perc.</div></div>
+    </div>
+
+    <div class="abilities">${ABILITIES.map(a => `
+      <div class="ab"><div class="name">${a.toUpperCase()}</div><div class="mod">${fmtMod(ctx.mods[a])}</div><div class="score">${ch.abilities[a]}</div></div>`).join("")}
+    </div>
+
+    <div class="card">
+      <h3>Skills</h3>
+      <div class="skills">${Object.keys(SKILLS).map(name => {
+        const lv = skillLevel(ch, name);
+        return `<div class="skill ${lv ? "trained" : ""}"><span class="dot l${lv}">${lv === 2 ? "★" : lv === 1 ? "●" : "○"}</span><span class="sn">${esc(name)}</span><b>${fmtMod(skillMod(ch, name))}</b></div>`;
+      }).join("")}</div>
+      <div class="hint" style="margin-top:6px">● proficient · ★ expertise — set in Edit → Character</div>
+    </div>
+
+    <div class="card">
+      <h3>Hit Points</h3>
+      <div class="hpctl">
+        <span class="bignum">${ch.state.hp} / ${ch.maxHp}</span>
+        <span class="stepper">
+          <button onclick="adjustHp(-5)">−5</button><button onclick="adjustHp(-1)">−1</button>
+          <button onclick="adjustHp(1)">+1</button><button onclick="adjustHp(5)">+5</button>
+        </span>
+        <label class="muted">Temp <input type="number" style="width:60px" value="${ch.state.tempHp}" onchange="setTempHp(this.value)"></label>
+      </div>
+      <div class="hpbar"><div class="${hpCls}" style="width:${hpPct}%"></div></div>
+      <div class="muted">Hit dice (${esc(ch.hitDie)}): ${totalLevel(ch) - ch.state.hitDiceUsed} / ${totalLevel(ch)} left
+        <span class="stepper"><button onclick="adjustHitDice(1)" title="spend">−</button><button onclick="adjustHitDice(-1)" title="restore">+</button></span>
+      </div>
+    </div>
+
+    ${slotHtml ? `<div class="card"><h3>Spell Slots</h3>${slotHtml}</div>` : ""}
+
+    ${useResources() ? `<div class="card"><h3>Resources</h3>${resHtml}</div>` : ""}
+
+    <div class="card">
+      <h3>This Turn</h3>
+      <div class="economy">
+        ${["action","bonus","reaction"].map(t => `<button class="econ ${ch.state.econ[t] ? "used" : ""}" onclick="toggleEcon('${t}')">${cap(t)}</button>`).join("")}
+      </div>
+      <div style="margin-bottom:10px">${flagsHtml}</div>
+      <div class="btnrow">
+        <button class="btn primary" onclick="doNewTurn()">▶ New turn</button>
+        <button class="btn" onclick="doNewEncounter()">⚔ New encounter</button>
+        <button class="btn" onclick="doShortRest()">☕ Short rest</button>
+        <button class="btn" onclick="doLongRest()">🌙 Long rest</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Equipment &amp; Coin</h3>
+      ${ch.equipment.map((e, i) => `<div class="equiprow">
+        <span class="eqname">${esc(e.name)}</span>
+        <span class="stepper"><button onclick="updEquipQty(${i},-1)">−</button></span>
+        <b class="eqqty">${e.qty}</b>
+        <span class="stepper"><button onclick="updEquipQty(${i},1)">+</button></span>
+        <button class="eqdel" onclick="removeEquip(${i})" title="remove">×</button>
+      </div>`).join("") || `<div class="muted">No equipment noted yet.</div>`}
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input type="text" id="newEquip" placeholder="Add item (e.g. Thieves' Tools)…" style="flex:1"
+          onkeydown="if(event.key==='Enter')addEquip()">
+        <button class="btn small" onclick="addEquip()">＋ Add</button>
+      </div>
+      <div class="coinrow">
+        ${COINS.map(c => `<label class="coin">${c.toUpperCase()}<input type="number" min="0" value="${ch.coins[c] || 0}" onchange="updCoin('${c}',this.value)"></label>`).join("")}
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px">
+        <h3 style="flex:1;margin-bottom:0">Log</h3>
+        <button class="btn small" onclick="clearLog()">✕ Clear</button>
+      </div>
+      <div id="log">${logHtml}</div>
+    </div>`;
+}
+
+// equipment & coin
+function updEquipQty(i, d) { const e = currentChar().equipment[i]; e.qty = Math.max(0, (e.qty || 0) + d); saveDB(); renderSheet(); }
+function removeEquip(i) { currentChar().equipment.splice(i, 1); saveDB(); renderSheet(); }
+function addEquip() {
+  const inp = $("#newEquip"); const name = (inp.value || "").trim();
+  if (!name) return;
+  currentChar().equipment.push({ id: uid(), name, qty: 1 });
+  saveDB(); renderSheet();
+}
+function updCoin(c, v) { currentChar().coins[c] = Math.max(0, parseInt(v, 10) || 0); saveDB(); renderSheet(); }
+function clearLog() { currentChar().state.log = []; saveDB(); renderSheet(); }
+
+// sheet interactions
+function adjustHp(d) {
+  const ch = currentChar();
+  if (d < 0 && ch.state.tempHp > 0) { // damage eats temp HP first
+    const absorb = Math.min(ch.state.tempHp, -d);
+    ch.state.tempHp -= absorb; d += absorb;
+  }
+  ch.state.hp = clamp(ch.state.hp + d, 0, ch.maxHp);
+  saveDB(); renderSheet();
+}
+function setTempHp(v) { currentChar().state.tempHp = Math.max(0, parseInt(v, 10) || 0); saveDB(); renderSheet(); }
+function adjustHitDice(d) { const ch = currentChar(); ch.state.hitDiceUsed = clamp(ch.state.hitDiceUsed + d, 0, totalLevel(ch)); saveDB(); renderSheet(); }
+function toggleSlot(lvlIdx, pipIdx) {
+  const ch = currentChar(); const max = slotsFor(ch)[lvlIdx]; const used = ch.state.slotsUsed[lvlIdx] || 0;
+  ch.state.slotsUsed[lvlIdx] = pipIdx < max - used ? used + 1 : used - 1;
+  saveDB(); renderSheet();
+}
+function togglePact(pipIdx) {
+  const ch = currentChar(); const pact = pactFor(ch);
+  ch.state.pactUsed = pipIdx < pact.n - ch.state.pactUsed ? ch.state.pactUsed + 1 : ch.state.pactUsed - 1;
+  saveDB(); renderSheet();
+}
+function toggleRes(id, pipIdx) {
+  const ch = currentChar(); const res = ch.resources.find(r => r.id === id); const used = ch.state.res[id] || 0;
+  ch.state.res[id] = pipIdx < res.max - used ? used + 1 : used - 1;
+  saveDB(); renderSheet();
+}
+function adjustRes(id, d) {
+  const ch = currentChar(); const res = ch.resources.find(r => r.id === id);
+  ch.state.res[id] = clamp((ch.state.res[id] || 0) + d, 0, res.max);
+  saveDB(); renderSheet();
+}
+function removeFlag(id) { const ch = currentChar(); ch.state.flags = ch.state.flags.filter(f => f.id !== id); saveDB(); renderSheet(); }
+function toggleEcon(t) { const ch = currentChar(); ch.state.econ[t] = !ch.state.econ[t]; saveDB(); renderSheet(); }
+function doNewTurn() { newTurn(currentChar()); renderSheet(); }
+function doNewEncounter() { newEncounter(currentChar()); renderSheet(); }
+function doShortRest() { shortRest(currentChar()); renderSheet(); }
+function doLongRest() { longRest(currentChar()); renderSheet(); }
+
+/* ---------------- ACTIONS LIST ---------------- */
+function actionDamageSummary(ch, action) {
+  const r = resolveSelection(ch, action, { opts: new Set(), slotLevel: action.spellLevel || null, optSlots: {} });
+  if (r.healing && !r.damage.length) return { main: `${r.healStats.min}–${r.healStats.max}`, sub: "healing" };
+  if (!r.damage.length) return { main: "—", sub: "" };
+  return { main: `${r.stats.min}–${r.stats.max}`, sub: `⌀ ${r.stats.avg} ${r.damage.map(g => g.type).join("/")}` };
+}
+
+function renderActions() {
+  const ch = currentChar();
+  const q = UI.search.toLowerCase();
+  const match = a => (UI.filter === "all" || a.kind === UI.filter) &&
+    (!q || a.name.toLowerCase().includes(q) || (a.description || "").toLowerCase().includes(q));
+  const groups = [
+    { label: "Weapons & Attacks", items: ch.actions.filter(a => a.kind === "weapon" && match(a)) },
+    { label: "Cantrips", items: ch.actions.filter(a => a.kind === "spell" && a.spellLevel === 0 && match(a)) },
+  ];
+  for (let l = 1; l <= 9; l++) {
+    const items = ch.actions.filter(a => a.kind === "spell" && a.spellLevel === l && match(a));
+    if (items.length) groups.push({ label: `Level ${l} Spells`, items });
+  }
+  groups.push({ label: "Features", items: ch.actions.filter(a => a.kind === "feature" && match(a)) });
+
+  const itemHtml = a => {
+    const d = actionDamageSummary(ch, a);
+    return `<div class="actionitem" onclick="openAction('${a.id}')">
+      <div class="info">
+        <div class="nm">${esc(a.name)} <span class="pill ${esc(a.time)}">${cap(a.time || "")}</span>${a.concentration ? ` <span class="pill">Conc.</span>` : ""}</div>
+        <div class="desc">${esc(a.description || "")}</div>
+      </div>
+      <div class="dmg">${d.main}<span class="sub">${esc(d.sub)}</span></div>
+    </div>`;
+  };
+
+  $("#view-actions").innerHTML = `
+    <div class="filterbar">
+      <input type="search" placeholder="Search…" value="${esc(UI.search)}" oninput="UI.search=this.value;renderActions()">
+      ${["all","weapon","spell","feature"].map(f =>
+        `<button class="chip ${UI.filter === f ? "active" : ""}" onclick="UI.filter='${f}';renderActions()">${cap(f === "all" ? "all" : f + "s")}</button>`).join("")}
+    </div>
+    ${groups.filter(g => g.items.length).map(g => `<div class="grouphead">${esc(g.label)}</div>${g.items.map(itemHtml).join("")}`).join("")
+      || `<div class="card muted">No actions found. Add some in the Edit tab.</div>`}`;
+}
+
+/* ---------------- RESOLUTION MODAL ---------------- */
+function openAction(id) {
+  const ch = currentChar();
+  const action = ch.actions.find(a => a.id === id);
+  const sel = { opts: new Set(), slotLevel: action.spellLevel || null, optSlots: {} };
+  // pre-check default-on options
+  for (const o of ch.options) if (o.defaultOn && optionApplies(o, action)) sel.opts.add(o.id);
+  UI.modal = { actionId: id, sel, attackRoll: null, damageRoll: null, healRoll: null, forceCrit: false };
+  renderActionModal();
+}
+
+function closeModal() { UI.modal = null; $("#modalRoot").innerHTML = ""; }
+
+function renderActionModal() {
+  const ch = currentChar();
+  const m = UI.modal;
+  const action = ch.actions.find(a => a.id === m.actionId);
+  if (!action) return closeModal();
+  const r = resolveSelection(ch, action, m.sel);
+  const opts = ch.options.filter(o => optionApplies(o, action));
+  const levels = slotLevels(ch);
+
+  // slot picker for leveled spells
+  let slotPick = "";
+  if (action.kind === "spell" && action.spellLevel >= 1) {
+    const choices = levels.filter(s => s.lvl >= action.spellLevel);
+    slotPick = `<div style="margin:8px 0"><b>Cast with slot:</b>
+      <select onchange="UI.modal.sel.slotLevel=parseInt(this.value);UI.modal.damageRoll=null;renderActionModal()">
+        ${choices.map(s => `<option value="${s.lvl}" ${s.lvl === m.sel.slotLevel ? "selected" : ""}>Level ${s.lvl} (${s.free}/${s.max} left)</option>`).join("")}
+      </select></div>`;
+    if (!choices.length) slotPick = `<div class="warnbox">No spell slots of level ${action.spellLevel}+ available.</div>`;
+  }
+
+  const optHtml = opts.map(o => {
+    const on = m.sel.opts.has(o.id);
+    let slotSel = "";
+    if (on && o.effects.slotCost > 0) {
+      const choices = levels.filter(s => s.lvl >= o.effects.slotCost);
+      const cur = m.sel.optSlots[o.id] || o.effects.slotCost;
+      slotSel = `<div>Slot: <select onclick="event.stopPropagation()" onchange="UI.modal.sel.optSlots['${o.id}']=parseInt(this.value);UI.modal.damageRoll=null;renderActionModal()">
+        ${choices.map(s => `<option value="${s.lvl}" ${s.lvl === cur ? "selected" : ""}>Level ${s.lvl} (${s.free}/${s.max} left)</option>`).join("")}
+      </select></div>`;
+    }
+    return `<label class="optrow"><input type="checkbox" ${on ? "checked" : ""} onchange="toggleOpt('${o.id}')">
+      <span><span class="on">${esc(o.name)}</span><div class="od">${esc(o.description)}</div>${slotSel}</span></label>`;
+  }).join("");
+
+  const warn = r.warnings.map(w => `<div class="warnbox">⚠ ${esc(w)}</div>`).join("");
+  const isCrit = m.forceCrit || r.autoCrit || (m.attackRoll && m.attackRoll.pick === 20);
+
+  // roll results
+  let rollHtml = "";
+  if (m.attackRoll) {
+    const a = m.attackRoll;
+    const dice = a.rolls.map(x =>
+      `<span class="die ${x === 20 ? "max" : x === 1 ? "min" : ""} ${a.rolls.length > 1 && x !== a.pick ? "dropped" : ""}">${x}</span>`).join("");
+    rollHtml += `<div class="rollout">🎯 To hit: ${dice} ${fmtMod(r.attackBonus)} = <span class="total">${a.pick + r.attackBonus}</span>
+      ${a.pick === 20 ? `<span class="crit"> NATURAL 20!</span>` : a.pick === 1 ? `<span class="crit"> Natural 1 — miss.</span>` : ""}</div>`;
+  }
+  if (m.damageRoll) {
+    rollHtml += `<div class="rollout">💥 Damage${m.damageRoll.crit ? ` <span class="crit">(CRIT)</span>` : ""}:
+      ${m.damageRoll.groups.map(g => `<div>${g.detail.map(d =>
+        d.flat !== undefined ? `<span class="die">${d.flat >= 0 ? "+" + d.flat : d.flat}</span>`
+        : `<span class="die ${d.roll === d.die ? "max" : d.roll === 1 ? "min" : ""}">${d.sign < 0 ? "−" : ""}${d.roll}</span>`).join("")}
+        <b>${g.total}</b> ${esc(g.type)}${g.n > 1 ? ` <span class="muted">(${g.label} ${g.i + 1}/${g.n})</span>` : ""}</div>`).join("")}
+      <div class="total">${m.damageRoll.grand} total</div></div>`;
+  }
+  if (m.healRoll) {
+    rollHtml += `<div class="rollout">💚 Healing: ${m.healRoll.detail.map(d =>
+      d.flat !== undefined ? `<span class="die">+${d.flat}</span>` : `<span class="die ${d.roll === d.die ? "max" : ""}">${d.roll}</span>`).join("")}
+      = <span class="total">${m.healRoll.total} HP</span></div>`;
+  }
+
+  const hasDamage = r.damage.length > 0;
+  $("#modalRoot").innerHTML = `<div class="overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="closebar">
+        <div><h2>${esc(action.name)}</h2>
+          <span class="pill ${esc(action.time)}">${cap(action.time || "")}</span>
+          ${action.kind === "spell" ? `<span class="pill">${action.spellLevel === 0 ? "Cantrip" : "Level " + action.spellLevel}</span>` : ""}
+          ${action.concentration ? `<span class="pill">Concentration</span>` : ""}
+        </div>
+        <button onclick="closeModal()">✕</button>
+      </div>
+      <p class="muted" style="margin-bottom:8px">${esc(action.description || "")}</p>
+      ${slotPick}
+      ${opts.length ? `<h3 style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--ink-soft);margin:10px 0 6px">Options</h3>${optHtml}` : ""}
+      ${warn}
+      <div class="instructions"><ol>${r.steps.map(s => `<li>${s}</li>`).join("")}</ol>
+        ${r.notes.length ? `<div class="muted" style="margin-top:8px">${r.notes.map(n => `<div>• ${n}</div>`).join("")}</div>` : ""}</div>
+      ${hasDamage ? `<div class="mmx">
+        <div class="stat"><div class="v">${r.stats.min}</div><div class="l">Min</div></div>
+        <div class="stat"><div class="v">${r.stats.avg}</div><div class="l">Average</div></div>
+        <div class="stat"><div class="v">${r.stats.max}</div><div class="l">Max</div></div>
+      </div>` : ""}
+      <div class="btnrow">
+        ${r.attackBonus !== null ? `<button class="btn" onclick="doAttackRoll()">🎲 Roll to hit</button>` : ""}
+        ${hasDamage ? `<button class="btn" onclick="doDamageRoll()">🎲 Roll damage</button>
+          <label class="chip" style="display:inline-flex;align-items:center;gap:5px"><input type="checkbox" ${m.forceCrit ? "checked" : ""} onchange="UI.modal.forceCrit=this.checked;UI.modal.damageRoll=null;renderActionModal()" style="accent-color:var(--accent)">Crit</label>` : ""}
+        ${r.healing ? `<button class="btn" onclick="doHealRoll()">🎲 Roll healing</button>` : ""}
+      </div>
+      ${rollHtml}
+      <div style="margin-top:14px" class="btnrow">
+        <button class="btn primary" style="flex:1" onclick="doCommit()">✓ Use — spend costs & mark sheet</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleOpt(id) {
+  const s = UI.modal.sel.opts;
+  s.has(id) ? s.delete(id) : s.add(id);
+  UI.modal.damageRoll = null; UI.modal.attackRoll = null;
+  renderActionModal();
+}
+
+function doAttackRoll() {
+  const ch = currentChar();
+  const action = ch.actions.find(a => a.id === UI.modal.actionId);
+  const r = resolveSelection(ch, action, UI.modal.sel);
+  UI.modal.attackRoll = rollD20(r.advState);
+  renderActionModal();
+}
+
+function doDamageRoll() {
+  const ch = currentChar();
+  const m = UI.modal;
+  const action = ch.actions.find(a => a.id === m.actionId);
+  const r = resolveSelection(ch, action, m.sel);
+  const crit = m.forceCrit || r.autoCrit || (m.attackRoll && m.attackRoll.pick === 20);
+  const groups = []; let grand = 0;
+  for (let i = 0; i < r.count; i++) {
+    for (const g of r.damage) {
+      const roll = rollTerms(g.terms, { crit });
+      groups.push({ type: g.type, total: Math.max(0, roll.total), detail: roll.detail, i, n: r.count, label: r.countLabel || "hit" });
+      grand += Math.max(0, roll.total);
+    }
+  }
+  m.damageRoll = { groups, grand, crit };
+  renderActionModal();
+}
+
+function doHealRoll() {
+  const ch = currentChar();
+  const action = ch.actions.find(a => a.id === UI.modal.actionId);
+  const r = resolveSelection(ch, action, UI.modal.sel);
+  UI.modal.healRoll = rollTerms(r.healing.terms);
+  renderActionModal();
+}
+
+function doCommit() {
+  const ch = currentChar();
+  const action = ch.actions.find(a => a.id === UI.modal.actionId);
+  const r = resolveSelection(ch, action, UI.modal.sel);
+  commitSelection(ch, action, UI.modal.sel, r);
+  closeModal();
+  UI.tab = "sheet";
+  render();
+}
+/* ---------------- EDIT VIEW ---------------- */
+const DICE_HINT = `Dice language: e.g. <code>1d8+MOD</code>, <code>3d6</code>, <code>8d6</code>, <code>ceil(L/2)d6</code> (Sneak Attack), <code>L</code> (= level, flat), <code>-1d6</code> (forgo dice). Symbols: <code>MOD</code> attack/spell modifier, <code>PB</code> proficiency, <code>L</code> level, <code>STR</code>…<code>CHA</code>. Type <code>healing</code> restores HP.`;
+
+function renderEdit() {
+  const ch = currentChar();
+  const sub = UI.editTab;
+  $("#view-edit").innerHTML = `
+    <div class="subtabs">
+      ${["character","actions","options"].map(t =>
+        `<button class="chip ${sub === t ? "active" : ""}" onclick="UI.editTab='${t}';renderEdit()">${cap(t)}</button>`).join("")}
+    </div>
+    <div id="editBody">${sub === "character" ? editCharacterHtml(ch) : sub === "actions" ? editActionsHtml(ch) : editOptionsHtml(ch)}</div>`;
+}
+
+function editCharacterHtml(ch) {
+  const casterAuto = casterTypeOf(Object.assign({}, ch, { casterType: "auto" }));
+  return `
+  <fieldset><legend>Basics</legend>
+    <div class="formrow">
+      <label>Name <input type="text" class="wide" style="width:220px" value="${esc(ch.name)}" onchange="updChar('name',this.value)"></label>
+      <label>Max HP <input type="number" value="${ch.maxHp}" onchange="updChar('maxHp',parseInt(this.value)||1)"></label>
+      <label>AC <input type="number" value="${ch.ac}" onchange="updChar('ac',parseInt(this.value)||10)"></label>
+      <label>Speed <input type="number" value="${ch.speed}" onchange="updChar('speed',parseInt(this.value)||30)"></label>
+      <label>Hit die <select onchange="updChar('hitDie',this.value)">${["d6","d8","d10","d12"].map(d => `<option ${ch.hitDie === d ? "selected" : ""}>${d}</option>`).join("")}</select></label>
+      <label>Initiative bonus (extra) <input type="number" value="${ch.initExtra || 0}" onchange="updChar('initExtra',parseInt(this.value)||0)"></label>
+    </div>
+    <div class="formrow" style="align-items:center">
+      ${ch.portrait ? `<img class="portrait editpreview" src="${ch.portrait}" alt="Portrait">` : ""}
+      <label>Portrait <input type="file" accept="image/*" onchange="setPortraitFile(this.files[0])"></label>
+      ${ch.portrait ? `<button class="btn small danger" onclick="updChar('portrait',null)">remove</button>` : ""}
+    </div>
+    <div class="hint">Images are shrunk and stored inside the character (they travel along on export).</div>
+  </fieldset>
+  <fieldset><legend>Classes</legend>
+    ${ch.classes.map((c, i) => `<div class="formrow">
+      <label>Class <select onchange="updClass(${i},'cls',this.value)">${Object.keys(CLASSES).map(k => `<option ${c.cls === k ? "selected" : ""}>${k}</option>`).join("")}</select></label>
+      <label>Subclass <input type="text" value="${esc(c.subclass)}" onchange="updClass(${i},'subclass',this.value)"></label>
+      <label>Level <input type="number" min="1" max="20" value="${c.level}" onchange="updClass(${i},'level',clamp(parseInt(this.value)||1,1,20))"></label>
+      ${ch.classes.length > 1 ? `<button class="btn small danger" style="align-self:flex-end" onclick="removeClass(${i})">remove</button>` : ""}
+    </div>`).join("")}
+    <button class="btn small" onclick="addClass()">＋ Add class (multiclass)</button>
+  </fieldset>
+  <fieldset><legend>Abilities</legend>
+    <div class="formrow">
+      ${ABILITIES.map(a => `<label>${a.toUpperCase()} <input type="number" style="width:64px" value="${ch.abilities[a]}" onchange="updAbility('${a}',this.value)"></label>`).join("")}
+    </div>
+  </fieldset>
+  <fieldset><legend>Skills</legend>
+    <div class="formrow">
+      ${Object.keys(SKILLS).map(name => `<label>${esc(name)} (${SKILLS[name].toUpperCase()})
+        <select onchange="updSkill('${name.replace(/'/g, "\\'")}',parseInt(this.value))">
+          <option value="0" ${!skillLevel(ch, name) ? "selected" : ""}>—</option>
+          <option value="1" ${skillLevel(ch, name) === 1 ? "selected" : ""}>proficient</option>
+          <option value="2" ${skillLevel(ch, name) === 2 ? "selected" : ""}>expertise</option>
+        </select></label>`).join("")}
+    </div>
+  </fieldset>
+  <fieldset><legend>Spellcasting</legend>
+    <div class="formrow">
+      <label>Caster type <select onchange="updChar('casterType',this.value)">
+        ${["auto","none","full","half","third","pact"].map(t => `<option value="${t}" ${ch.casterType === t ? "selected" : ""}>${t === "auto" ? `auto (${casterAuto})` : t}</option>`).join("")}
+      </select></label>
+      <label>Spellcasting ability <select onchange="updChar('spellAbility',this.value)">
+        ${ABILITIES.map(a => `<option value="${a}" ${ch.spellAbility === a ? "selected" : ""}>${ABILITY_NAMES[a]}</option>`).join("")}
+      </select></label>
+    </div>
+    <div class="hint">Slots follow the 2024 tables for the caster type (full / half = Paladin & Ranger / third = Arcane Trickster & Eldritch Knight / pact = Warlock).</div>
+  </fieldset>
+  <fieldset><legend>Party Settings (all characters)</legend>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:600">
+      <input type="checkbox" ${useResources() ? "checked" : ""} onchange="DB.settings.useResources=this.checked;saveDB();renderEdit()">
+      Use class resources (Ki, Rage, Channel Divinity …)
+    </label>
+    <div class="hint">Off = only spell slots are tracked; resource cards and costs are hidden for the whole party.</div>
+  </fieldset>
+  ${useResources() ? `<fieldset><legend>Resources</legend>
+    ${ch.resources.map((r, i) => `<div class="formrow">
+      <label>Name <input type="text" style="width:190px" value="${esc(r.name)}" onchange="updResource(${i},'name',this.value)"></label>
+      <label>Max <input type="number" style="width:64px" value="${r.max}" onchange="updResource(${i},'max',parseInt(this.value)||1)"></label>
+      <label>Resets on <select onchange="updResource(${i},'reset',this.value)">
+        <option value="short" ${r.reset === "short" ? "selected" : ""}>short rest</option>
+        <option value="long" ${r.reset === "long" ? "selected" : ""}>long rest</option></select></label>
+      <label>Style <select onchange="updResource(${i},'style',this.value)">
+        <option value="pips" ${r.style !== "counter" ? "selected" : ""}>pips</option>
+        <option value="counter" ${r.style === "counter" ? "selected" : ""}>counter</option></select></label>
+      <button class="btn small danger" style="align-self:flex-end" onclick="removeResource(${i})">remove</button>
+    </div>`).join("") || `<div class="hint">e.g. Channel Divinity, Rage, Ki, Lay on Hands pool…</div>`}
+    <button class="btn small" onclick="addResource()">＋ Add resource</button>
+  </fieldset>` : ""}`;
+}
+
+function updChar(f, v) { currentChar()[f] = v; saveDB(); if (f === "name") render(); else renderEdit(); }
+function setPortraitFile(file) {
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const MAXW = 440, MAXH = 560;
+    const scale = Math.min(1, MAXW / img.width, MAXH / img.height);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    currentChar().portrait = canvas.toDataURL("image/jpeg", 0.78);
+    URL.revokeObjectURL(img.src);
+    saveDB(); renderEdit();
+  };
+  img.onerror = () => { alert("Couldn't read that image."); URL.revokeObjectURL(img.src); };
+  img.src = URL.createObjectURL(file);
+}
+function updAbility(a, v) { currentChar().abilities[a] = clamp(parseInt(v, 10) || 10, 1, 30); saveDB(); renderEdit(); }
+function updClass(i, f, v) { currentChar().classes[i][f] = v; saveDB(); renderEdit(); }
+function addClass() { currentChar().classes.push({ cls: "Fighter", subclass: "", level: 1 }); saveDB(); renderEdit(); }
+function removeClass(i) { currentChar().classes.splice(i, 1); saveDB(); renderEdit(); }
+function updSkill(name, lv) {
+  const ch = currentChar();
+  if (lv) ch.skills[name] = lv; else delete ch.skills[name];
+  saveDB(); renderEdit();
+}
+function updResource(i, f, v) { currentChar().resources[i][f] = v; saveDB(); renderEdit(); }
+function addResource() { currentChar().resources.push({ id: uid(), name: "New resource", max: 1, reset: "long", style: "pips" }); saveDB(); renderEdit(); }
+function removeResource(i) { const ch = currentChar(); delete ch.state.res[ch.resources[i].id]; ch.resources.splice(i, 1); saveDB(); renderEdit(); }
+
+/* ----- Actions editor ----- */
+function editActionsHtml(ch) {
+  const rows = ch.actions.map((a, i) => UI.editActionId === a.id ? actionFormHtml(ch, a) : `
+    <div class="actionitem" draggable="true" onclick="UI.editActionId='${a.id}';renderEdit()"
+      ondragstart="dragRow(event,${i},'actions')" ondragover="overRow(event,this)" ondragleave="this.classList.remove('dragover')" ondrop="dropRow(event,${i},'actions',this)">
+      <span class="draghandle" title="drag to sort" onclick="event.stopPropagation()">⠿</span>
+      <div class="info"><div class="nm">${esc(a.name)} <span class="pill">${esc(a.kind)}</span></div>
+      <div class="desc">${esc(a.description || "")}</div></div>
+      <span class="rowmove">
+        <button onclick="event.stopPropagation();moveItem('actions',${i},-1)" title="move up">▲</button>
+        <button onclick="event.stopPropagation();moveItem('actions',${i},1)" title="move down">▼</button>
+      </span>
+      <span class="muted">✎</span>
+    </div>`).join("");
+  return `${rows}
+    <div class="btnrow" style="margin-top:10px">
+      <button class="btn" onclick="addAction()">＋ New action</button>
+      <select id="libPick">${WEAPON_LIBRARY.map((w, i) => `<option value="${i}">${esc(w.name)} (${esc(w.cat)}, ${esc(w.dmg.replace("+MOD", ""))} ${esc(w.type)})</option>`).join("")}</select>
+      <button class="btn" onclick="addFromLibrary()">＋ Add weapon from 2024 list</button>
+    </div>`;
+}
+
+function actionFormHtml(ch, a) {
+  const dmgRows = a.damage.map((d, i) => `<div class="formrow">
+    <label>Dice <input type="text" value="${esc(d.expr)}" onchange="updDamage('${a.id}',${i},'expr',this.value)"></label>
+    <label>Type <select onchange="updDamage('${a.id}',${i},'type',this.value)">
+      ${DAMAGE_TYPES.map(t => `<option ${d.type === t ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+    <button class="btn small danger" style="align-self:flex-end" onclick="removeDamage('${a.id}',${i})">remove</button>
+  </div>`).join("");
+  const flagRows = (a.setFlags || []).map((f, i) => `<div class="formrow">
+    <label>Marker text <input type="text" style="width:260px" value="${esc(f.label)}" onchange="updActionFlag('${a.id}',${i},'label',this.value)"></label>
+    <label>Clears on <select onchange="updActionFlag('${a.id}',${i},'clear',this.value)">
+      ${["turn","encounter","rest","manual"].map(c => `<option ${f.clear === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+    <button class="btn small danger" style="align-self:flex-end" onclick="removeActionFlag('${a.id}',${i})">remove</button>
+  </div>`).join("");
+  const costRows = (a.costs || []).map((c, i) => `<div class="formrow">
+    <label>Resource <select onchange="updActionCost('${a.id}',${i},'id',this.value)">
+      ${ch.resources.map(r => `<option value="${r.id}" ${c.id === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select></label>
+    <label>Amount <input type="number" style="width:64px" value="${c.amount || 1}" onchange="updActionCost('${a.id}',${i},'amount',parseInt(this.value)||1)"></label>
+    <button class="btn small danger" style="align-self:flex-end" onclick="removeActionCost('${a.id}',${i})">remove</button>
+  </div>`).join("");
+
+  return `<div class="card" style="border-color:var(--gold)">
+    <div class="formrow">
+      <label>Name <input type="text" style="width:200px" value="${esc(a.name)}" onchange="updAction('${a.id}','name',this.value)"></label>
+      <label>Kind <select onchange="updAction('${a.id}','kind',this.value)">
+        ${["weapon","spell","feature"].map(k => `<option ${a.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></label>
+      <label>Time <select onchange="updAction('${a.id}','time',this.value)">
+        ${["action","bonus","reaction","none"].map(t => `<option ${a.time === t ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+    </div>
+    <div class="formrow">
+      <label class="full">Short description <input type="text" class="wide" value="${esc(a.description || "")}" onchange="updAction('${a.id}','description',this.value)"></label>
+      <label class="full">Procedure — “what do I do?” <textarea onchange="updAction('${a.id}','procedure',this.value)">${esc(a.procedure || "")}</textarea></label>
+      <label>Tags (comma-sep.) <input type="text" style="width:280px" value="${esc((a.tags || []).join(", "))}" onchange="updAction('${a.id}','tags',this.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean))"></label>
+    </div>
+    <fieldset><legend>Roll</legend>
+      <div class="formrow">
+        <label>Roll type <select onchange="updAction('${a.id}','attack',this.value)">
+          <option value="attack" ${a.attack === "attack" ? "selected" : ""}>attack roll</option>
+          <option value="save" ${a.attack === "save" ? "selected" : ""}>saving throw</option>
+          <option value="none" ${a.attack === "none" ? "selected" : ""}>none / automatic</option></select></label>
+        <label>Ability <select onchange="updAction('${a.id}','ability',this.value)">
+          ${["auto","spell","none",...ABILITIES].map(x => `<option value="${x}" ${a.ability === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+        <label>Extra to-hit <input type="number" style="width:64px" value="${a.attackExtra || 0}" onchange="updAction('${a.id}','attackExtra',parseInt(this.value)||0)"></label>
+        <label style="flex-direction:row;align-items:center;gap:6px">Proficient <input type="checkbox" ${a.proficient ? "checked" : ""} onchange="updAction('${a.id}','proficient',this.checked)"></label>
+      </div>
+      ${a.attack === "save" ? `<div class="formrow">
+        <label>Save ability <select onchange="updAction('${a.id}','saveAbility',this.value)">
+          ${ABILITIES.map(x => `<option value="${x}" ${a.saveAbility === x ? "selected" : ""}>${ABILITY_NAMES[x]}</option>`).join("")}</select></label>
+        <label style="flex-direction:row;align-items:center;gap:6px">Half damage on success <input type="checkbox" ${a.saveHalf ? "checked" : ""} onchange="updAction('${a.id}','saveHalf',this.checked)"></label>
+      </div>` : ""}
+    </fieldset>
+    <fieldset><legend>Damage / Healing</legend>
+      ${dmgRows}<button class="btn small" onclick="addDamage('${a.id}')">＋ Damage row</button>
+      <div class="formrow" style="margin-top:8px">
+        <label>Scaling <select onchange="updAction('${a.id}','damageScale',this.value)">
+          <option value="none" ${a.damageScale !== "cantrip" ? "selected" : ""}>none</option>
+          <option value="cantrip" ${a.damageScale === "cantrip" ? "selected" : ""}>cantrip (×2 at lvl 5, ×3 at 11, ×4 at 17)</option></select></label>
+        <label>Projectiles <input type="number" style="width:64px" min="1" value="${a.count || 1}" onchange="updAction('${a.id}','count',parseInt(this.value)||1)"></label>
+        <label>…called <input type="text" style="width:90px" placeholder="darts" value="${esc(a.countLabel || "")}" onchange="updAction('${a.id}','countLabel',this.value)"></label>
+        <label>Projectile scaling <select onchange="updAction('${a.id}','countScale',this.value)">
+          <option value="none" ${a.countScale !== "cantrip" ? "selected" : ""}>none</option>
+          <option value="cantrip" ${a.countScale === "cantrip" ? "selected" : ""}>cantrip beams (2/3/4)</option></select></label>
+      </div>
+      <div class="hint">${DICE_HINT}</div>
+    </fieldset>
+    <fieldset><legend>Spell level & upcasting</legend>
+      <div class="formrow">
+        <label>Spell level <select onchange="updAction('${a.id}','spellLevel',this.value==='none'?null:parseInt(this.value))">
+          <option value="none" ${a.spellLevel === null || a.spellLevel === undefined ? "selected" : ""}>not a spell</option>
+          ${[0,1,2,3,4,5,6,7,8,9].map(l => `<option value="${l}" ${a.spellLevel === l ? "selected" : ""}>${l === 0 ? "cantrip" : "level " + l}</option>`).join("")}</select></label>
+        <label>Upcast <select onchange="updUpcastMode('${a.id}',this.value)">
+          <option value="none" ${!a.upcast ? "selected" : ""}>no effect</option>
+          <option value="dice" ${a.upcast && a.upcast.mode === "dice" ? "selected" : ""}>extra dice per level</option>
+          <option value="count" ${a.upcast && a.upcast.mode === "count" ? "selected" : ""}>extra projectile per level</option></select></label>
+        ${a.upcast && a.upcast.mode === "dice" ? `
+          <label>Dice / level <input type="text" style="width:80px" value="${esc(a.upcast.expr || "")}" onchange="updUpcast('${a.id}','expr',this.value)"></label>
+          <label>Type <select onchange="updUpcast('${a.id}','type',this.value)">
+            ${DAMAGE_TYPES.map(t => `<option ${a.upcast.type === t ? "selected" : ""}>${t}</option>`).join("")}</select></label>` : ""}
+        <label style="flex-direction:row;align-items:center;gap:6px">Concentration <input type="checkbox" ${a.concentration ? "checked" : ""} onchange="updAction('${a.id}','concentration',this.checked)"></label>
+        <label style="flex-direction:row;align-items:center;gap:6px">Once per turn <input type="checkbox" ${a.oncePerTurn ? "checked" : ""} onchange="updAction('${a.id}','oncePerTurn',this.checked)"></label>
+      </div>
+    </fieldset>
+    <fieldset><legend>Costs & markers</legend>
+      ${useResources() ? `${costRows}<button class="btn small" onclick="addActionCost('${a.id}')" ${ch.resources.length ? "" : "disabled title='no resources defined'"}>＋ Resource cost</button>` : ""}
+      <div style="margin-top:8px">${flagRows}<button class="btn small" onclick="addActionFlag('${a.id}')">＋ Marker on the sheet (e.g. Concentration)</button></div>
+    </fieldset>
+    <div class="editrowbtns">
+      <button class="btn small" onclick="duplicateAction('${a.id}')">⧉ Duplicate</button>
+      <button class="btn small danger" onclick="deleteAction('${a.id}')">✕ Delete</button>
+      <button class="btn small primary" onclick="UI.editActionId=null;renderEdit()">Done</button>
+    </div>
+  </div>`;
+}
+
+/* ----- list sorting (drag & drop + arrows) ----- */
+function listOf(kind) { const ch = currentChar(); return kind === "actions" ? ch.actions : ch.options; }
+function dragRow(ev, i, kind) { UI.drag = { i, kind }; ev.dataTransfer.effectAllowed = "move"; }
+function overRow(ev, el) { ev.preventDefault(); el.classList.add("dragover"); }
+function dropRow(ev, i, kind, el) {
+  ev.preventDefault(); el.classList.remove("dragover");
+  if (!UI.drag || UI.drag.kind !== kind) return;
+  moveItemTo(kind, UI.drag.i, i); UI.drag = null;
+}
+function moveItemTo(kind, from, to) {
+  if (from === to) return;
+  const arr = listOf(kind);
+  const [x] = arr.splice(from, 1);
+  arr.splice(to, 0, x);
+  saveDB(); renderEdit();
+}
+function moveItem(kind, i, d) {
+  const j = i + d;
+  if (j < 0 || j >= listOf(kind).length) return;
+  moveItemTo(kind, i, j);
+}
+
+function findAction(id) { return currentChar().actions.find(a => a.id === id); }
+function updAction(id, f, v) { findAction(id)[f] = v; saveDB(); renderEdit(); }
+function updDamage(id, i, f, v) { findAction(id).damage[i][f] = v; saveDB(); renderEdit(); }
+function addDamage(id) { findAction(id).damage.push({ expr: "1d6", type: "slashing" }); saveDB(); renderEdit(); }
+function removeDamage(id, i) { findAction(id).damage.splice(i, 1); saveDB(); renderEdit(); }
+function updUpcastMode(id, mode) {
+  const a = findAction(id);
+  a.upcast = mode === "none" ? null : (mode === "count" ? { mode: "count" } : { mode: "dice", expr: "1d6", type: (a.damage[0] && a.damage[0].type) || "fire" });
+  saveDB(); renderEdit();
+}
+function updUpcast(id, f, v) { findAction(id).upcast[f] = v; saveDB(); renderEdit(); }
+function updActionFlag(id, i, f, v) { findAction(id).setFlags[i][f] = v; saveDB(); renderEdit(); }
+function addActionFlag(id) { const a = findAction(id); (a.setFlags = a.setFlags || []).push({ label: "Effect active", clear: "manual" }); saveDB(); renderEdit(); }
+function removeActionFlag(id, i) { findAction(id).setFlags.splice(i, 1); saveDB(); renderEdit(); }
+function updActionCost(id, i, f, v) { findAction(id).costs[i][f] = v; saveDB(); renderEdit(); }
+function addActionCost(id) { const ch = currentChar(); findAction(id).costs.push({ type: "resource", id: ch.resources[0].id, amount: 1 }); saveDB(); renderEdit(); }
+function removeActionCost(id, i) { findAction(id).costs.splice(i, 1); saveDB(); renderEdit(); }
+function addAction() { const a = featureAction({ name: "New action", description: "" }); currentChar().actions.push(a); UI.editActionId = a.id; saveDB(); renderEdit(); }
+function addFromLibrary() {
+  const idx = parseInt($("#libPick").value, 10);
+  const a = weaponAction(WEAPON_LIBRARY[idx].name);
+  currentChar().actions.push(a); UI.editActionId = a.id; saveDB(); renderEdit();
+}
+function duplicateAction(id) {
+  const a = JSON.parse(JSON.stringify(findAction(id)));
+  a.id = uid(); a.name += " (copy)";
+  currentChar().actions.push(a); UI.editActionId = a.id; saveDB(); renderEdit();
+}
+function deleteAction(id) {
+  if (!confirm("Delete this action?")) return;
+  const ch = currentChar(); ch.actions = ch.actions.filter(a => a.id !== id);
+  UI.editActionId = null; saveDB(); renderEdit();
+}
+
+/* ----- Options editor ----- */
+function editOptionsHtml(ch) {
+  const rows = ch.options.map((o, i) => UI.editOptionId === o.id ? optionFormHtml(ch, o) : `
+    <div class="actionitem" draggable="true" onclick="UI.editOptionId='${o.id}';renderEdit()"
+      ondragstart="dragRow(event,${i},'options')" ondragover="overRow(event,this)" ondragleave="this.classList.remove('dragover')" ondrop="dropRow(event,${i},'options',this)">
+      <span class="draghandle" title="drag to sort" onclick="event.stopPropagation()">⠿</span>
+      <div class="info"><div class="nm">${esc(o.name)}</div><div class="desc">${esc(o.description || "")}</div></div>
+      <span class="rowmove">
+        <button onclick="event.stopPropagation();moveItem('options',${i},-1)" title="move up">▲</button>
+        <button onclick="event.stopPropagation();moveItem('options',${i},1)" title="move down">▼</button>
+      </span>
+      <span class="muted">✎</span>
+    </div>`).join("");
+  return `<div class="hint" style="margin-bottom:10px">Options are toggles that appear on matching actions — combos like Sneak Attack, Steady Aim, Divine Smite, feats, fighting styles…</div>
+    ${rows}<div class="btnrow" style="margin-top:10px">
+      <button class="btn" onclick="addOption()">＋ New option</button>
+      <select id="featPick">${FEAT_LIBRARY.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select>
+      <button class="btn" onclick="addFeatFromLibrary()">＋ Add feat from 2024 list</button>
+    </div>`;
+}
+
+function addFeatFromLibrary() {
+  const f = FEAT_LIBRARY[parseInt($("#featPick").value, 10)];
+  const o = featOption(f.name);
+  currentChar().options.push(o); UI.editOptionId = o.id; saveDB(); renderEdit();
+}
+
+function optionFormHtml(ch, o) {
+  const fx = o.effects;
+  const diceRows = (fx.dice || []).map((d, i) => `<div class="formrow">
+    <label>Dice <input type="text" value="${esc(d.expr)}" onchange="updOptDice('${o.id}',${i},'expr',this.value)"></label>
+    <label>Type <select onchange="updOptDice('${o.id}',${i},'type',this.value)">
+      <option value="" ${!d.type ? "selected" : ""}>same as action</option>
+      ${DAMAGE_TYPES.map(t => `<option ${d.type === t ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+    <button class="btn small danger" style="align-self:flex-end" onclick="removeOptDice('${o.id}',${i})">remove</button>
+  </div>`).join("");
+  const flagRows = (fx.setFlags || []).map((f, i) => `<div class="formrow">
+    <label>Marker text <input type="text" style="width:260px" value="${esc(f.label)}" onchange="updOptFlag('${o.id}',${i},'label',this.value)"></label>
+    <label>Clears on <select onchange="updOptFlag('${o.id}',${i},'clear',this.value)">
+      ${["turn","encounter","rest","manual"].map(c => `<option ${f.clear === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+    <button class="btn small danger" style="align-self:flex-end" onclick="removeOptFlag('${o.id}',${i})">remove</button>
+  </div>`).join("");
+  const resRows = (fx.resourceCosts || []).map((c, i) => `<div class="formrow">
+    <label>Resource <select onchange="updOptRes('${o.id}',${i},'id',this.value)">
+      ${ch.resources.map(r => `<option value="${r.id}" ${c.id === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select></label>
+    <label>Amount <input type="number" style="width:64px" value="${c.amount || 1}" onchange="updOptRes('${o.id}',${i},'amount',parseInt(this.value)||1)"></label>
+    <button class="btn small danger" style="align-self:flex-end" onclick="removeOptRes('${o.id}',${i})">remove</button>
+  </div>`).join("");
+
+  return `<div class="card" style="border-color:var(--gold)">
+    <div class="formrow">
+      <label>Name <input type="text" style="width:220px" value="${esc(o.name)}" onchange="updOption('${o.id}','name',this.value)"></label>
+      <label style="flex-direction:row;align-items:center;gap:6px">On by default <input type="checkbox" ${o.defaultOn ? "checked" : ""} onchange="updOption('${o.id}','defaultOn',this.checked)"></label>
+    </div>
+    <div class="formrow"><label class="full">Description <textarea onchange="updOption('${o.id}','description',this.value)">${esc(o.description || "")}</textarea></label></div>
+    <fieldset><legend>Appears on which actions?</legend>
+      <div class="formrow">
+        <label>Mode <select onchange="updApplies('${o.id}','mode',this.value)">
+          <option value="all" ${o.applies.mode === "all" ? "selected" : ""}>all actions</option>
+          <option value="tags" ${o.applies.mode === "tags" ? "selected" : ""}>actions with tag…</option>
+          <option value="actions" ${o.applies.mode === "actions" ? "selected" : ""}>specific actions</option></select></label>
+        ${o.applies.mode === "tags" ? `<label>Tags (any matches) <input type="text" style="width:240px" value="${esc((o.applies.tags || []).join(", "))}" onchange="updApplies('${o.id}','tags',this.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean))"></label>` : ""}
+        <label>Requires <select onchange="updOption('${o.id}','requires',this.value)">
+          <option value="any" ${o.requires === "any" ? "selected" : ""}>—</option>
+          <option value="attack" ${o.requires === "attack" ? "selected" : ""}>an attack roll</option></select></label>
+      </div>
+      ${o.applies.mode === "actions" ? `<div class="formrow">${ch.actions.map(a => `
+        <label style="flex-direction:row;align-items:center;gap:5px"><input type="checkbox" ${(o.applies.actionIds || []).includes(a.id) ? "checked" : ""} onchange="toggleAppliesAction('${o.id}','${a.id}',this.checked)">${esc(a.name)}</label>`).join("")}</div>` : ""}
+    </fieldset>
+    <fieldset><legend>Effects</legend>
+      ${diceRows}<button class="btn small" onclick="addOptDice('${o.id}')">＋ Extra damage dice</button>
+      <div class="hint">${DICE_HINT}</div>
+      <div class="formrow" style="margin-top:8px">
+        <label style="flex-direction:row;align-items:center;gap:6px">Advantage <input type="checkbox" ${fx.advantage ? "checked" : ""} onchange="updEffect('${o.id}','advantage',this.checked)"></label>
+        <label style="flex-direction:row;align-items:center;gap:6px">Disadvantage <input type="checkbox" ${fx.disadvantage ? "checked" : ""} onchange="updEffect('${o.id}','disadvantage',this.checked)"></label>
+        <label style="flex-direction:row;align-items:center;gap:6px">Auto-crit <input type="checkbox" ${fx.autoCrit ? "checked" : ""} onchange="updEffect('${o.id}','autoCrit',this.checked)"></label>
+        <label style="flex-direction:row;align-items:center;gap:6px">Once per turn <input type="checkbox" ${fx.oncePerTurn ? "checked" : ""} onchange="updEffect('${o.id}','oncePerTurn',this.checked)"></label>
+        <label style="flex-direction:row;align-items:center;gap:6px">Speed → 0 <input type="checkbox" ${fx.speedZero ? "checked" : ""} onchange="updEffect('${o.id}','speedZero',this.checked)"></label>
+      </div>
+      <div class="formrow">
+        <label>Extra action cost <select onchange="updEffect('${o.id}','time',this.value==='none'?null:this.value)">
+          ${["none","action","bonus","reaction"].map(t => `<option value="${t}" ${(fx.time || "none") === t ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+        <label>Uses spell slot of level <select onchange="updEffect('${o.id}','slotCost',parseInt(this.value))">
+          ${[0,1,2,3,4,5].map(l => `<option value="${l}" ${fx.slotCost === l ? "selected" : ""}>${l === 0 ? "no" : l}</option>`).join("")}</select></label>
+        ${fx.slotCost > 0 ? `<label>Upcast dice / level <input type="text" style="width:80px" value="${esc((fx.upcast && fx.upcast.expr) || "")}" onchange="updOptUpcast('${o.id}','expr',this.value)"></label>
+        <label>Upcast type <select onchange="updOptUpcast('${o.id}','type',this.value)">
+          <option value="" ${!(fx.upcast && fx.upcast.type) ? "selected" : ""}>same as action</option>
+          ${DAMAGE_TYPES.map(t => `<option ${(fx.upcast && fx.upcast.type) === t ? "selected" : ""}>${t}</option>`).join("")}</select></label>` : ""}
+      </div>
+      ${useResources() ? `${resRows}<button class="btn small" onclick="addOptRes('${o.id}')" ${ch.resources.length ? "" : "disabled title='no resources defined'"}>＋ Resource cost</button>` : ""}
+      <div style="margin-top:8px">${flagRows}<button class="btn small" onclick="addOptFlag('${o.id}')">＋ Marker on the sheet</button></div>
+      <div class="formrow" style="margin-top:8px"><label class="full">Instruction note (supports {DC}, {DC-DEX}, {PB}, {MOD}, {L})
+        <textarea onchange="updEffect('${o.id}','note',this.value)">${esc(fx.note || "")}</textarea></label></div>
+    </fieldset>
+    <div class="editrowbtns">
+      <button class="btn small" onclick="duplicateOption('${o.id}')">⧉ Duplicate</button>
+      <button class="btn small danger" onclick="deleteOption('${o.id}')">✕ Delete</button>
+      <button class="btn small primary" onclick="UI.editOptionId=null;renderEdit()">Done</button>
+    </div>
+  </div>`;
+}
+
+function findOption(id) { return currentChar().options.find(o => o.id === id); }
+function updOption(id, f, v) { findOption(id)[f] = v; saveDB(); renderEdit(); }
+function updEffect(id, f, v) { findOption(id).effects[f] = v; saveDB(); renderEdit(); }
+function updApplies(id, f, v) { findOption(id).applies[f] = v; saveDB(); renderEdit(); }
+function toggleAppliesAction(id, actionId, on) {
+  const arr = findOption(id).applies.actionIds || (findOption(id).applies.actionIds = []);
+  const i = arr.indexOf(actionId);
+  if (on && i < 0) arr.push(actionId); if (!on && i >= 0) arr.splice(i, 1);
+  saveDB(); renderEdit();
+}
+function updOptDice(id, i, f, v) { findOption(id).effects.dice[i][f] = v; saveDB(); renderEdit(); }
+function addOptDice(id) { findOption(id).effects.dice.push({ expr: "1d6", type: "" }); saveDB(); renderEdit(); }
+function removeOptDice(id, i) { findOption(id).effects.dice.splice(i, 1); saveDB(); renderEdit(); }
+function updOptFlag(id, i, f, v) { findOption(id).effects.setFlags[i][f] = v; saveDB(); renderEdit(); }
+function addOptFlag(id) { const fx = findOption(id).effects; (fx.setFlags = fx.setFlags || []).push({ label: "Effect active", clear: "manual" }); saveDB(); renderEdit(); }
+function removeOptFlag(id, i) { findOption(id).effects.setFlags.splice(i, 1); saveDB(); renderEdit(); }
+function updOptRes(id, i, f, v) { findOption(id).effects.resourceCosts[i][f] = v; saveDB(); renderEdit(); }
+function addOptRes(id) { const ch = currentChar(); findOption(id).effects.resourceCosts.push({ id: ch.resources[0].id, amount: 1 }); saveDB(); renderEdit(); }
+function removeOptRes(id, i) { findOption(id).effects.resourceCosts.splice(i, 1); saveDB(); renderEdit(); }
+function updOptUpcast(id, f, v) {
+  const fx = findOption(id).effects;
+  fx.upcast = fx.upcast || { expr: "1d8", type: "" };
+  fx.upcast[f] = v; saveDB(); renderEdit();
+}
+function addOption() { const o = makeOption({ name: "New option", description: "" }); currentChar().options.push(o); UI.editOptionId = o.id; saveDB(); renderEdit(); }
+function duplicateOption(id) {
+  const o = JSON.parse(JSON.stringify(findOption(id)));
+  o.id = uid(); o.name += " (copy)";
+  currentChar().options.push(o); UI.editOptionId = o.id; saveDB(); renderEdit();
+}
+function deleteOption(id) {
+  if (!confirm("Delete this option?")) return;
+  const ch = currentChar(); ch.options = ch.options.filter(o => o.id !== id);
+  UI.editOptionId = null; saveDB(); renderEdit();
+}
+
+/* ---------------- MENU / EXPORT / IMPORT ---------------- */
+function download(filename, text) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function menuAction(what) {
+  $("#menuPanel").classList.add("hidden");
+  const ch = currentChar();
+  if (what === "new") {
+    const c = blankCharacter(prompt("Character name?", "New Hero") || "New Hero");
+    DB.characters.push(c); DB.currentId = c.id; saveDB(); render();
+  } else if (what === "duplicate") {
+    const c = JSON.parse(JSON.stringify(ch)); c.id = uid(); c.name += " (copy)";
+    DB.characters.push(c); DB.currentId = c.id; saveDB(); render();
+  } else if (what === "export") {
+    download(ch.name.replace(/[^\w-]+/g, "_") + ".json", JSON.stringify(ch, null, 2));
+  } else if (what === "exportAll") {
+    download("dnd-party.json", JSON.stringify({ characters: DB.characters }, null, 2));
+  } else if (what === "import") {
+    $("#importFile").click();
+  } else if (what === "delete") {
+    if (DB.characters.length <= 1) { alert("Can't delete the last character."); return; }
+    if (!confirm(`Delete "${ch.name}"? This cannot be undone (export first if unsure).`)) return;
+    DB.characters = DB.characters.filter(c => c.id !== ch.id);
+    DB.currentId = DB.characters[0].id; saveDB(); render();
+  }
+}
+
+function importJson(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { alert("Not a valid JSON file."); return; }
+  let list = Array.isArray(data) ? data : (data.characters ? data.characters : [data]);
+  let count = 0;
+  for (const c of list) {
+    if (!c || !c.name || !Array.isArray(c.actions)) continue;
+    if (DB.characters.some(x => x.id === c.id)) c.id = uid();
+    c.state = Object.assign(freshState(), c.state || {});
+    DB.characters.push(c); DB.currentId = c.id; count++;
+  }
+  saveDB(); render();
+  alert(count ? `Imported ${count} character(s).` : "No characters found in that file.");
+}
+
+/* ============================================================
+   SECTION 8: INIT
+   ============================================================ */
+function init() {
+  loadDB();
+  $$("nav.tabs button").forEach(b => b.addEventListener("click", () => { UI.tab = b.dataset.tab; render(); }));
+  $("#charSelect").addEventListener("change", e => { DB.currentId = e.target.value; UI.editActionId = UI.editOptionId = null; saveDB(); render(); });
+  $("#menuBtn").addEventListener("click", e => { e.stopPropagation(); $("#menuPanel").classList.toggle("hidden"); });
+  document.addEventListener("click", e => { if (!$("#menuPanel").contains(e.target) && e.target !== $("#menuBtn")) $("#menuPanel").classList.add("hidden"); });
+  $$("#menuPanel button").forEach(b => b.addEventListener("click", () => menuAction(b.dataset.menu)));
+  $("#importFile").addEventListener("change", e => {
+    const f = e.target.files[0];
+    if (f) f.text().then(importJson);
+    e.target.value = "";
+  });
+  render();
+}
+if (typeof document !== "undefined" && document.readyState !== "loading") init();
+else if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
