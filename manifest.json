@@ -1,0 +1,14 @@
+{
+  "name": "D&D Party Companion",
+  "short_name": "Companion",
+  "description": "Pick an action, toggle your combos, see what to roll — 2024 rules.",
+  "start_url": "dnd-companion.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#271609",
+  "theme_color": "#271609",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

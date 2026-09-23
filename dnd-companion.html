@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>D&D Party Companion</title>
+<!-- Home-screen install (GitHub Pages). All optional: opened from file:// the
+     browser just ignores the manifest and the app works exactly as before. -->
+<meta name="theme-color" content="#271609">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Companion">
+<link rel="icon" href="icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
 <style>
 /* ============================================================
    THEME & RESET
@@ -87,7 +97,7 @@ h1,h2,h3,h4 { line-height: 1.2; }
 header {
   position: sticky; top: 0; z-index: 20;
   background: var(--header-bg); color: var(--header-ink);
-  padding: 10px 14px;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
   display: flex; align-items: center; gap: 10px;
   border-bottom: 3px double var(--gold-bright);
   box-shadow: 0 2px 8px rgba(0,0,0,.35);
