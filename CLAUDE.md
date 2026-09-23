@@ -20,7 +20,9 @@ Decisions already made with the user (don't relitigate):
 ## File layout
 
 - `dnd-companion.html` — the entire app. Internal sections, in order:
-  CSS → HTML skeleton → `<script>`: §1 rules constants (slot tables, weapon library),
+  CSS → HTML skeleton → `<script>`: §1 rules constants (slot tables, and the
+  reference libraries: `WEAPON_LIBRARY`, `ARMOR_LIBRARY`, `SPELL_LIBRARY`,
+  `CLASS_LIBRARY`, `SPECIES_LIBRARY`, `BACKGROUND_LIBRARY`, `FEAT_LIBRARY`),
   §2 utils, §3 dice expression parser/roller, §4 storage & character model,
   §5 seed data, §6 rules engine (`resolveSelection`, `commitSelection`, rests),
   §7 UI (render functions, inline `onclick` handlers as global functions),
@@ -29,38 +31,67 @@ Decisions already made with the user (don't relitigate):
   runs `engine.test.js` (pure logic) and `ui.test.js` (jsdom smoke test; needs
   `npm i jsdom` in `tests/`).
 - `*.pdf` — the 2024 Player's Handbook + official character sheet. **Rules source of
-  truth.** PDF page ≈ print page + 1 (e.g. print 215 weapons table = PDF page ~214).
-  The PDF has a messy OCR text layer: use `pdftotext` to *locate* content, but verify
-  numbers by reading the page image via the Read tool.
+  truth.** PDF page = print page − 1 (verified: PDF 214 carries the printed 215, the
+  weapons table).
+  The PDF has a messy OCR text layer, but it is more usable than it looks:
+  - `pdftotext` **without** `-layout` reads body text cleanly; `-layout` is for tables.
+  - Two-column pages come out interleaved, which scrambles which heading belongs to
+    which block. Fix it by splitting each `-layout` line at the gutter (the column
+    that is blank in >90% of rows) and emitting left column then right column. That
+    is how the 168 spells and 131 class features were transcribed.
+  - Known OCR substitutions: `l`/`J`/`I` for `1` (so `ld6` = 1d6, and **`Level J` is
+    ambiguous between 1 and 3** — Clairvoyance and Slow are level 3), `lO` for `10`,
+    `O` for `0`, `Goon` for `Good`, `Ore` for `Orc`.
+  - Verify anything load-bearing (damage dice, DCs, tables) against the page image
+    via the Read tool — `pdftoppm -f N -l N -r 130 -png` renders one page.
 
 ## Key model facts (schema is implicit, keep it consistent)
 
 - `DB = { version, characters[], currentId, settings:{useResources} }`
 - Character: `classes[{cls,subclass,level}]`, `casterType:"auto"|none|full|half|third|pact`,
+  `armorName`/`shield` (v4; `ac` stays the editable source of truth, `computeAC()`
+  just fills it from the picker),
   `abilities`, `skills{name:0|1|2}` (1 = proficient, 2 = expertise; list in `SKILLS`),
   `equipment[{id,name,qty}]`, `coins{pp,gp,ep,sp,cp}`,
   `resources[{id,name,max,reset,style}]`, `actions[]`, `options[]`,
   `portrait` (data-URI or null), `state` (hp, slotsUsed[9], pactUsed, res{}, econ{},
   flags[], perTurnUsed{}, log[]). Migration v3 backfills skills/equipment/coins.
   Actions/options order is user-sorted (drag & drop or ▲▼ in the Edit lists) — don't re-sort.
+- Reference libraries (§1) are all instantiated into the ordinary Action/Option
+  model, never consumed directly by the engine: `weaponAction()`, `featOption()` /
+  `featFeature()`, `spellFromLibrary()`, `addSpecies()`, `addBackground()`,
+  `addClassFeatures()`. Each library entry carries `as: "option"` (a toggle that
+  changes a roll) or defaults to a Feature action (a reference card on the sheet) —
+  keep that split when adding data.
 - `tests/wizard-walkthrough.js` (manual, not in run.sh) prints every wizard spell's
   resolution text — useful when changing instruction wording.
-- Action: unified weapon/spell/feature. Damage rows use the dice language
+- Action: unified weapon/spell/feature. `dcAbility` overrides the save DC's ability
+  (Dragonborn Breath Weapon uses CON, not the spellcasting ability); empty = spell DC.
+  Damage rows use the dice language
   (`1d8+MOD`, `ceil(L/2)d6`; symbols L/PB/MOD/STR…CHA). `spellLevel` + `upcast`
   (`{mode:"dice",expr,type}` or `{mode:"count"}`), `count`/`countLabel` for
   multi-projectile spells, `damageScale:"cantrip"` for 5/11/17 scaling.
 - Option: `applies` (all | tags | actionIds) + `effects` (dice[], advantage,
-  autoCrit, slotCost+upcast, resourceCosts, time, speedZero, oncePerTurn, setFlags,
-  note with `{DC}`-style tokens). Options ARE the combo system (Sneak Attack,
+  autoCrit, attackBonus, slotCost+upcast, resourceCosts, time, speedZero,
+  oncePerTurn, setFlags, note with `{DC}`-style tokens — `noteTokens()` knows
+  `{DC}`, `{DC-XXX}`, `{PB}`, `{MOD}`, `{L}` and `{STR}`…`{CHA}`, nothing else). Options ARE the combo system (Sneak Attack,
   Steady Aim, Divine Smite are seed options). **Feats are also Options**:
   `FEAT_LIBRARY` (§1) holds 2024 combat feats added via a quick-pick in
-  Edit → Options (`featOption()` instantiates them). Note-only feats (2024
-  Sharpshooter has no −5/+10 anymore!) are `defaultOn` rules reminders; GWM adds
-  `PB` damage on `heavy`-tagged attacks. Schema migrations live in `migrateDB()`
-  gated by `DB.version` (v2 = feats).
+  Edit → Options. All 75 are there, split by `cat` (Origin/General/Fighting
+  Style/Epic Boon). Note-only feats (2024 Sharpshooter has no −5/+10 anymore!) are
+  `defaultOn` rules reminders; GWM adds `PB` damage on `heavy`-tagged attacks.
+  Schema migrations live in `migrateDB()` gated by `DB.version` (v2 = feats,
+  v3 = skills/equipment/coins, v4 = armor).
+- Library coverage: all 37 weapons + 2 firearms, all 13 armor rows, all 75 feats,
+  all 10 species (38 traits) and 16 backgrounds, the 168 Cleric/Paladin/Wizard
+  spells of level 0-3, and all Rogue/Cleric/Wizard/Paladin class + subclass features
+  (131, all 16 subclasses). Spells above level 3 and the other eight classes are
+  deliberately not in yet.
 - 2024 rules gotchas already encoded: Assassinate is **not** auto-crit (advantage +
   initiative advantage + rogue-level bonus damage); Paladins get slots at level 1;
-  Cure Wounds/Healing Word are 2d8/2d4 and upcast by the same amount.
+  Cure Wounds/Healing Word are 2d8/2d4 and upcast by the same amount; Inflict Wounds
+  is a CON save now, not a melee spell attack; Ray of Sickness poisons with no save;
+  the smite spells (Searing/Wrathful) last 1 minute *without* Concentration.
 
 ## Conventions
 

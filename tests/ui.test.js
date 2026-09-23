@@ -92,9 +92,23 @@ setTimeout(() => {
     check("moved back up", w.currentChar().actions[0].id === firstAction);
     w.eval(`UI.editTab="options";renderEdit()`);
     const optCountBefore = w.currentChar().options.length;
-    d.querySelector("#featPick").value = "1"; // Great Weapon Master
+    const gwmIdx = G(`FEAT_LIBRARY.findIndex(f => f.name.startsWith("Great Weapon Master"))`);
+    d.querySelector("#featPick").value = String(gwmIdx);
     w.addFeatFromLibrary();
     check("feat added as editable option", w.currentChar().options.length === optCountBefore + 1 && d.querySelector("#view-edit .card textarea") !== null);
+
+    // Feats that change no roll land under Actions as reference cards instead.
+    w.eval(`UI.editTab="options";renderEdit()`);
+    const actCountBefore = w.currentChar().actions.length;
+    const optCountBefore2 = w.currentChar().options.length;
+    const toughIdx = G(`FEAT_LIBRARY.findIndex(f => f.name.startsWith("Tough"))`);
+    d.querySelector("#featPick").value = String(toughIdx);
+    w.addFeatFromLibrary();
+    check("reference feat added as feature action",
+      w.currentChar().actions.length === actCountBefore + 1 &&
+      w.currentChar().options.length === optCountBefore2 &&
+      w.currentChar().actions[w.currentChar().actions.length - 1].kind === "feature");
+    check("feat library complete", G("FEAT_LIBRARY.length") === 75);
 
     w.menuAction("new");
     check("new character created", G("DB.characters.length") === 5);

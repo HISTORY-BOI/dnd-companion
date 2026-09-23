@@ -551,55 +551,1552 @@ const MASTERY_DESCRIPTIONS = {
   Vex:    "On a hit that deals damage, you have Advantage on your next attack roll against that creature before the end of your next turn."
 };
 
-// 2024 combat feats (PHB ch. 5) — added to a character as editable Options
-// via the quick-pick in Edit → Options. Note-only feats are rules reminders
-// that show up in the resolution steps; Great Weapon Master actually adds damage.
+// 2024 PHB p. 219. dexMax: null = add full Dex modifier, 0 = no Dex bonus (Heavy).
+// str = minimum Strength score, below which the armor costs 10 ft of Speed.
+const ARMOR_LIBRARY = [
+  { name:"Padded Armor",          cat:"Light",  ac:11, dexMax:null, stealthDis:true,  str:0,  weight:8,  cost:"5 GP" },
+  { name:"Leather Armor",         cat:"Light",  ac:11, dexMax:null, stealthDis:false, str:0,  weight:10, cost:"10 GP" },
+  { name:"Studded Leather Armor", cat:"Light",  ac:12, dexMax:null, stealthDis:false, str:0,  weight:13, cost:"45 GP" },
+  { name:"Hide Armor",            cat:"Medium", ac:12, dexMax:2,    stealthDis:false, str:0,  weight:12, cost:"10 GP" },
+  { name:"Chain Shirt",           cat:"Medium", ac:13, dexMax:2,    stealthDis:false, str:0,  weight:20, cost:"50 GP" },
+  { name:"Scale Mail",            cat:"Medium", ac:14, dexMax:2,    stealthDis:true,  str:0,  weight:45, cost:"50 GP" },
+  { name:"Breastplate",           cat:"Medium", ac:14, dexMax:2,    stealthDis:false, str:0,  weight:20, cost:"400 GP" },
+  { name:"Half Plate Armor",      cat:"Medium", ac:15, dexMax:2,    stealthDis:true,  str:0,  weight:40, cost:"750 GP" },
+  { name:"Ring Mail",             cat:"Heavy",  ac:14, dexMax:0,    stealthDis:true,  str:0,  weight:40, cost:"30 GP" },
+  { name:"Chain Mail",            cat:"Heavy",  ac:16, dexMax:0,    stealthDis:true,  str:13, weight:55, cost:"75 GP" },
+  { name:"Splint Armor",          cat:"Heavy",  ac:17, dexMax:0,    stealthDis:true,  str:15, weight:60, cost:"200 GP" },
+  { name:"Plate Armor",           cat:"Heavy",  ac:18, dexMax:0,    stealthDis:true,  str:15, weight:65, cost:"1,500 GP" },
+];
+const SHIELD_BONUS = 2; // Shield: +2 AC, 6 lb., 10 GP
+
+// 2024 class features (PHB ch. 3) for the four classes this party plays,
+// including all four subclasses of each. Same split as the feat library:
+// `as: "option"` becomes a toggle on matching actions, anything else becomes a
+// Feature action — a reference card on the sheet. Ability Score Improvements and
+// Epic Boons are left out: take them from the feat quick-pick instead.
+const CLASS_LIBRARY = {
+  Rogue: {
+    features: [
+      { level: 1, name: "Expertise", description: "Expertise in two skill proficiencies (Sleight of Hand and Stealth recommended); two more at level 6.",
+        procedure: "Set those skills to 2 in the sheet's skill list — Expertise doubles your Proficiency Bonus." },
+      { level: 1, name: "Sneak Attack", as: "option",
+        description: "Once per turn, extra damage with a Finesse or Ranged weapon when you have Advantage, or when an ally is within 5 ft of the target.",
+        applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+        effects: { dice: [{ expr: "ceil(L/2)d6", type: "" }], oncePerTurn: true,
+          note: "Needs Advantage OR an ally within 5 ft of the target who isn't Incapacitated (and no Disadvantage). Damage type = the weapon's." } },
+      { level: 1, name: "Thieves' Cant", description: "You know Thieves' Cant and one other language.",
+        procedure: "No roll — a secret mix of jargon, slang and code." },
+      { level: 1, name: "Weapon Mastery (Rogue)", description: "Use the mastery properties of two kinds of weapons you're proficient with; change them on a Long Rest.",
+        procedure: "Daggers and Shortbows are the usual pick. The mastery is shown on each weapon's action." },
+      { level: 2, name: "Cunning Action", time: "bonus", description: "Dash, Disengage or Hide as a Bonus Action.",
+        procedure: "Choose one: Dash (double your movement), Disengage (no Opportunity Attacks against you), or Hide (Stealth check vs. passive Perception)." },
+      { level: 3, name: "Steady Aim", as: "option",
+        description: "Bonus Action: Advantage on your next attack this turn — only if you haven't moved, and your Speed becomes 0.",
+        applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack",
+        effects: { advantage: true, time: "bonus", speedZero: true,
+          setFlags: [{ label: "Speed 0 (Steady Aim)", clear: "turn" }],
+          note: "Usable only if you haven't moved this turn." } },
+      { level: 5, name: "Cunning Strike: Poison", as: "option",
+        description: "Forgo 1d6 Sneak Attack: CON save or Poisoned for 1 minute. Needs a Poisoner's Kit.",
+        applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+        effects: { dice: [{ expr: "-1d6", type: "" }],
+          note: "Only together with Sneak Attack. CON save DC {DC-DEX} or Poisoned for 1 minute, save ends at the end of each of its turns." } },
+      { level: 5, name: "Cunning Strike: Trip", as: "option",
+        description: "Forgo 1d6 Sneak Attack: DEX save or the target (Large or smaller) falls Prone.",
+        applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+        effects: { dice: [{ expr: "-1d6", type: "" }],
+          note: "Only together with Sneak Attack. DEX save DC {DC-DEX} or Prone (Large or smaller)." } },
+      { level: 5, name: "Cunning Strike: Withdraw", as: "option",
+        description: "Forgo 1d6 Sneak Attack: move half your Speed without provoking Opportunity Attacks.",
+        applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+        effects: { dice: [{ expr: "-1d6", type: "" }], note: "Only together with Sneak Attack. The move happens immediately after the attack." } },
+      { level: 5, name: "Uncanny Dodge", time: "reaction", description: "Reaction: halve the damage of an attack that hits you.",
+        procedure: "The attacker must be visible to you. Take half the attack's total damage, rounded down." },
+      { level: 7, name: "Evasion", description: "On a DEX save for half damage: no damage on a success, half on a failure.",
+        procedure: "Doesn't work while you have the Incapacitated condition." },
+      { level: 7, name: "Reliable Talent", description: "Treat a d20 roll of 9 or lower as a 10 on checks using your skill or tool proficiencies.",
+        procedure: "Applies only to ability checks, not attacks or saves." },
+      { level: 11, name: "Improved Cunning Strike", description: "Use up to two Cunning Strike effects at once, paying each die cost.",
+        procedure: "Toggle both options — the app subtracts both dice from the Sneak Attack." },
+      { level: 14, name: "Devious Strikes: Daze", as: "option",
+        description: "Forgo 2d6 Sneak Attack: CON save or the target may only move, or act, on its next turn.",
+        applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+        effects: { dice: [{ expr: "-2d6", type: "" }], note: "Only together with Sneak Attack. CON save DC {DC-DEX}." } },
+      { level: 14, name: "Devious Strikes: Knock Out", as: "option",
+        description: "Forgo 6d6 Sneak Attack: CON save or Unconscious for 1 minute (any damage wakes it).",
+        applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+        effects: { dice: [{ expr: "-6d6", type: "" }], note: "Only together with Sneak Attack. CON save DC {DC-DEX}, repeated at the end of each of its turns." } },
+      { level: 14, name: "Devious Strikes: Obscure", as: "option",
+        description: "Forgo 3d6 Sneak Attack: DEX save or Blinded until the end of its next turn.",
+        applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+        effects: { dice: [{ expr: "-3d6", type: "" }], note: "Only together with Sneak Attack. DEX save DC {DC-DEX}." } },
+      { level: 15, name: "Slippery Mind", description: "Proficiency in Wisdom and Charisma saving throws.",
+        procedure: "Note it here — the app doesn't roll saving throws." },
+      { level: 18, name: "Elusive", description: "No attack roll can have Advantage against you unless you're Incapacitated.",
+        procedure: "Passive." },
+      { level: 20, name: "Stroke of Luck", description: "Turn one failed D20 Test into a 20. Once per Short or Long Rest.",
+        procedure: "Declare it after seeing the roll fail." },
+    ],
+    subclasses: {
+      "Arcane Trickster": [
+        { level: 3, name: "Spellcasting (Arcane Trickster)", description: "Wizard spells with Intelligence, focused on Enchantment and Illusion.",
+          procedure: "Add your spells with the spell picker under Edit → Actions, and set Caster type to 'third' in Edit → Character." },
+        { level: 3, name: "Mage Hand Legerdemain", time: "bonus", description: "Cast Mage Hand as a Bonus Action, make it Invisible, and use it for Sleight of Hand checks.",
+          procedure: "Control the hand as a Bonus Action; through it you can pick pockets and locks at range." },
+        { level: 9, name: "Magical Ambush", description: "If you're Invisible when you cast a spell, the target has Disadvantage on saves against it that turn.",
+          procedure: "Pairs with Hide from Cunning Action." },
+        { level: 13, name: "Versatile Trickster", description: "The Trip option of Cunning Strike can also hit a second creature within 5 ft of your Mage Hand.",
+          procedure: "One die cost, two targets." },
+        { level: 17, name: "Spell Thief", time: "reaction", description: "Reaction: negate a spell targeting you and steal it for 8 hours. Once per Long Rest.",
+          procedure: "The caster makes an INT save vs. DC {DC}. On a fail you negate the effect against you and have the spell prepared for 8 hours, while it can't cast it." },
+      ],
+      "Assassin": [
+        { level: 3, name: "Assassinate", as: "option",
+          description: "Advantage on Initiative, and on attacks in round 1 against creatures that haven't acted. A Sneak Attack hit that round adds your Rogue level in damage.",
+          applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack",
+          effects: { advantage: true, dice: [{ expr: "L", type: "" }],
+            note: "Round 1 only, against a creature that hasn't taken its turn. The extra {L} damage needs the attack to include a Sneak Attack hit." } },
+        { level: 3, name: "Assassin's Tools", description: "You gain and are proficient with a Disguise Kit and a Poisoner's Kit.",
+          procedure: "Both are already in your equipment list." },
+        { level: 9, name: "Infiltration Expertise", description: "Mimic speech or handwriting after an hour of study; Steady Aim no longer drops your Speed to 0.",
+          procedure: "Roving Aim means you can move and still use Steady Aim." },
+        { level: 13, name: "Envenom Weapons", as: "option",
+          description: "The Poison option of Cunning Strike also deals 2d6 Poison on a failed save, ignoring Resistance.",
+          applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+          effects: { dice: [{ expr: "2d6", type: "poison" }],
+            note: "Only with Cunning Strike: Poison, and only when the target fails the save. Ignores Resistance to Poison." } },
+        { level: 17, name: "Death Strike", description: "A Sneak Attack hit in round 1: CON save or the attack's damage is doubled.",
+          procedure: "CON save DC {DC-DEX}. Doubling applies to the whole attack, Sneak Attack dice included." },
+      ],
+      "Soulknife": [
+        { level: 3, name: "Psionic Power", description: "Psionic Energy Dice (4d6 at level 3, growing to 12d12) fuel Psi-Bolstered Knack and Psychic Whispers.",
+          procedure: "Psi-Bolstered Knack: after failing a check with a proficient skill or tool, roll a die and add it — spent only if you then succeed. Psychic Whispers: telepathy with {PB} creatures for hours equal to the roll. One die back on a Short Rest, all on a Long Rest." },
+        { level: 3, name: "Psychic Blades", description: "A Simple Melee weapon of psychic energy: 1d6 Psychic + your modifier, Finesse, Thrown (60/120), Vex mastery. Bonus Action second blade deals 1d4.",
+          procedure: "Manifest it as part of the Attack action or an Opportunity Attack. Add it as a weapon action: 1d6+MOD Psychic, Finesse and Thrown. The Bonus Action blade uses 1d4 instead." },
+        { level: 9, name: "Soul Blades", description: "Homing Strikes: add a Psionic Energy Die to a missed blade attack. Psychic Teleportation: Bonus Action, throw a blade and teleport 10 ft × the roll.",
+          procedure: "Homing Strikes spends the die only if it turns the miss into a hit." },
+        { level: 13, name: "Psychic Veil", description: "Magic action: Invisible for 1 hour. Once per Long Rest, or spend a Psionic Energy Die.",
+          procedure: "Ends early as soon as you deal damage or force a save." },
+        { level: 17, name: "Rend Mind", description: "A Psychic Blade Sneak Attack can Stun the target for 1 minute.",
+          procedure: "WIS save DC {DC-DEX} or Stunned, repeating the save at the end of each of its turns. Once per Long Rest, or spend three Psionic Energy Dice." },
+      ],
+      "Thief": [
+        { level: 3, name: "Fast Hands", time: "bonus", description: "Bonus Action: a Sleight of Hand check (locks, traps, pockets), or the Utilize/Magic action to use an object or magic item.",
+          procedure: "Thieves' Tools work for picking locks and disarming traps." },
+        { level: 3, name: "Second-Story Work", description: "Climb Speed equal to your Speed; jump distance uses Dexterity instead of Strength.",
+          procedure: "Passive." },
+        { level: 9, name: "Supreme Sneak: Stealth Attack", as: "option",
+          description: "Forgo 1d6 Sneak Attack: stay hidden after attacking if you end the turn behind Three-Quarters or Total Cover.",
+          applies: { mode: "tags", tags: ["finesse", "ranged"], actionIds: [] }, requires: "attack",
+          effects: { dice: [{ expr: "-1d6", type: "" }], note: "Only together with Sneak Attack, and only while you have the Hide action's Invisible condition." } },
+        { level: 13, name: "Use Magic Device", description: "Attune to four items; a 1d6 roll of 6 spends no charge; cast from any Spell Scroll.",
+          procedure: "Scrolls above level 1 need an INT (Arcana) check vs. DC 10 + the spell's level, or the scroll is destroyed." },
+        { level: 17, name: "Thief's Reflexes", description: "Two turns in the first round of combat — the second at your Initiative minus 10.",
+          procedure: "Take the first turn normally, the second ten places later in the order." },
+      ],
+    },
+  },
+
+  Cleric: {
+    features: [
+      { level: 1, name: "Spellcasting (Cleric)", description: "Full caster: Wisdom-based Cleric spells, prepared from the whole list.",
+        procedure: "Set Spell ability to Wisdom in Edit → Character. Your spell save DC is {DC} and your spell attack bonus is {WIS} + {PB}." },
+      { level: 1, name: "Divine Order", description: "Protector: Martial weapons and Heavy armor training. Thaumaturge: one extra cantrip and a bonus to Arcana/Religion checks.",
+        procedure: "Thaumaturge's bonus to INT (Arcana or Religion) checks equals {WIS} (minimum +1)." },
+      { level: 2, name: "Channel Divinity: Divine Spark", time: "action",
+        description: "Magic action, 30 ft: 1d8 + WIS, either as healing or as damage on a failed CON save (half on a success). Scales at levels 7/13/18.",
+        attack: "save", saveAbility: "con", saveHalf: true, damage: [{ expr: "1d8+WIS", type: "radiant" }],
+        procedure: "Point your Holy Symbol: either restore that many Hit Points, or force a CON save vs. DC {DC} for Necrotic or Radiant damage (half on a success). 2d8 at level 7, 3d8 at 13, 4d8 at 18. Costs one use of Channel Divinity." },
+      { level: 2, name: "Channel Divinity: Turn Undead", time: "action",
+        attack: "save", saveAbility: "wis", saveHalf: false,
+        description: "Magic action: Undead within 30 ft make a WIS save or are Frightened and Incapacitated for 1 minute.",
+        procedure: "Each Undead of your choice within 30 ft makes a WIS save vs. DC {DC}. Those that fail flee from you; any damage ends it. Costs one use of Channel Divinity (two uses, one back on a Short Rest)." },
+      { level: 5, name: "Sear Undead", description: "Turn Undead also deals Radiant damage equal to WIS modifier d8s to each Undead that fails.",
+        procedure: "Roll {WIS}d8 (minimum 1d8) and add them up — each Undead that failed takes that much Radiant damage, and stays turned." },
+      { level: 7, name: "Blessed Strikes: Divine Strike", as: "option",
+        description: "Once per turn, a weapon hit deals an extra 1d8 Necrotic or Radiant (2d8 at level 14).",
+        applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack",
+        effects: { dice: [{ expr: "1d8", type: "radiant" }], oncePerTurn: true,
+          note: "Choose Necrotic or Radiant. Raise the dice to 2d8 at Cleric level 14. Pick this OR Potent Spellcasting, not both." } },
+      { level: 7, name: "Blessed Strikes: Potent Spellcasting", as: "option",
+        description: "Add your Wisdom modifier to the damage of any Cleric cantrip.",
+        applies: { mode: "tags", tags: ["spell"], actionIds: [] }, requires: "any",
+        effects: { dice: [{ expr: "WIS", type: "" }],
+          note: "Cleric cantrips only. At level 14 a damaging cantrip also grants twice your Wisdom modifier in Temporary HP to a creature within 60 ft. Pick this OR Divine Strike, not both." } },
+      { level: 10, name: "Divine Intervention", time: "action", description: "Magic action: cast any Cleric spell of level 5 or lower, free, no Material components. Once per Long Rest.",
+        procedure: "The spell can't be one with a Reaction casting time. At level 20 you may choose Wish instead, at the cost of 2d4 Long Rests." },
+      { level: 14, name: "Improved Blessed Strikes", description: "Divine Strike rises to 2d8; Potent Spellcasting adds Temporary Hit Points on a damaging cantrip.",
+        procedure: "Update the dice on your Blessed Strikes option." },
+      { level: 20, name: "Greater Divine Intervention", description: "Divine Intervention can cast Wish, then recharges after 2d4 Long Rests.",
+        procedure: "Otherwise as Divine Intervention." },
+    ],
+    subclasses: {
+      "Life Domain": [
+        { level: 3, name: "Disciple of Life", description: "Healing spells cast with a slot restore an extra 2 + the slot's level Hit Points.",
+          procedure: "Add 2 + the slot level to the roll — a level 1 Cure Wounds heals 2d8 + {WIS} + 3." },
+        { level: 3, name: "Life Domain Spells", description: "Always prepared: 3 Aid, Bless, Cure Wounds, Lesser Restoration; 5 Mass Healing Word, Revivify; 7 Aura of Life, Death Ward; 9 Greater Restoration, Mass Cure Wounds.",
+          procedure: "Add them with the spell picker — they don't count against your prepared spells." },
+        { level: 3, name: "Preserve Life", time: "action", description: "Channel Divinity: restore five times your Cleric level in Hit Points, split among Bloodied creatures within 30 ft.",
+          procedure: "That's {L} × 5 Hit Points to divide as you like, but no creature can go above half its Hit Point maximum." },
+        { level: 6, name: "Blessed Healer", description: "Healing others with a spell slot also heals you for 2 + the slot's level.",
+          procedure: "Applies once per casting, only when the spell heals someone other than you." },
+        { level: 17, name: "Supreme Healing", description: "Healing dice from spells and Channel Divinity are treated as maximum rolls.",
+          procedure: "Don't roll — 2d6 restores 12, 2d8 restores 16." },
+      ],
+      "Light Domain": [
+        { level: 3, name: "Light Domain Spells", description: "Always prepared: 3 Burning Hands, Faerie Fire, Scorching Ray, See Invisibility; 5 Daylight, Fireball; 7 Arcane Eye, Wall of Fire; 9 Flame Strike, Scrying.",
+          procedure: "Add them with the spell picker — they don't count against your prepared spells." },
+        { level: 3, name: "Radiance of the Dawn", time: "action",
+          attack: "save", saveAbility: "con", saveHalf: true, damage: [{ expr: "2d10+L", type: "radiant" }],
+          description: "Channel Divinity: a 30-ft Emanation dispels magical Darkness and deals 2d10 + your Cleric level Radiant on a failed CON save.",
+          procedure: "Choose who in the Emanation is affected; each makes a CON save vs. DC {DC}, taking half on a success." },
+        { level: 3, name: "Warding Flare", time: "reaction", description: "Reaction: impose Disadvantage on an attack roll within 30 ft. WIS modifier uses per Long Rest.",
+          procedure: "{WIS} uses (minimum 1). At level 6 they come back on a Short Rest too, and the target gains 2d6 + {WIS} Temporary HP." },
+        { level: 6, name: "Improved Warding Flare", description: "Warding Flare recharges on a Short Rest and grants 2d6 + WIS Temporary Hit Points.",
+          procedure: "The temp HP go to the target of the triggering attack." },
+        { level: 17, name: "Corona of Light", time: "action", description: "Magic action: Bright Light 60 ft for 1 minute; enemies in it have Disadvantage on saves against your Fire and Radiant spells.",
+          procedure: "{WIS} uses per Long Rest (minimum 1). Also applies to saves against Radiance of the Dawn." },
+      ],
+      "Trickery Domain": [
+        { level: 3, name: "Blessing of the Trickster", time: "action", description: "Magic action: you or a creature within 30 ft gains Advantage on Stealth checks until your next Long Rest.",
+          procedure: "No Channel Divinity cost. Using it again moves the blessing." },
+        { level: 3, name: "Invoke Duplicity", time: "bonus", description: "Channel Divinity: an illusory double for 1 minute — cast spells from its space, and gain Advantage when you flank a creature with it.",
+          procedure: "Bonus Action to create it within 30 ft, and a Bonus Action to move it up to 30 ft. Distract: when you and the illusion are both within 5 ft of a creature that can see it, you have Advantage on attacks against that creature." },
+        { level: 3, name: "Trickery Domain Spells", description: "Always prepared: 3 Charm Person, Disguise Self, Invisibility, Pass without Trace; 5 Hypnotic Pattern, Nondetection; 7 Confusion, Dimension Door; 9 Dominate Person, Modify Memory.",
+          procedure: "Add them with the spell picker — they don't count against your prepared spells." },
+        { level: 6, name: "Trickster's Transposition", description: "Creating or moving your duplicate lets you teleport and swap places with it.",
+          procedure: "Free, as part of the same Bonus Action." },
+        { level: 17, name: "Improved Duplicity", description: "You and your allies have Advantage against creatures within 5 ft of the illusion, and it heals when it ends.",
+          procedure: "Healing Illusion: when it ends, you or a creature within 5 ft of it regains Hit Points." },
+      ],
+      "War Domain": [
+        { level: 3, name: "Guided Strike", time: "reaction", description: "Channel Divinity: turn a miss into a hit with a +10 bonus — yours, or an ally's within 30 ft.",
+          procedure: "Used after the attack roll misses. Your own use costs no Reaction; helping another creature does. Costs one use of Channel Divinity." },
+        { level: 3, name: "War Domain Spells", description: "Always prepared: 3 Guiding Bolt, Magic Weapon, Shield of Faith, Spiritual Weapon; 5 Crusader's Mantle, Spirit Guardians; 7 Fire Shield, Freedom of Movement; 9 Hold Monster, Steel Wind Strike.",
+          procedure: "Add them with the spell picker — they don't count against your prepared spells." },
+        { level: 3, name: "War Priest", time: "bonus", description: "Bonus Action: one attack with a weapon or an Unarmed Strike. WIS modifier uses per Short or Long Rest.",
+          procedure: "{WIS} uses (minimum 1), back on a Short or Long Rest." },
+        { level: 6, name: "War God's Blessing", description: "Cast Shield of Faith or Spiritual Weapon with Channel Divinity instead of a slot — and without Concentration.",
+          procedure: "The spell then lasts 1 minute, ending early if you recast it, become Incapacitated, or die." },
+        { level: 17, name: "Avatar of Battle", description: "Resistance to Bludgeoning, Piercing and Slashing damage.",
+          procedure: "Passive — halve all weapon damage you take." },
+      ],
+    },
+  },
+
+  Paladin: {
+    features: [
+      { level: 1, name: "Lay On Hands", time: "bonus", description: "A pool of five times your Paladin level in healing, spent as a Bonus Action by touch. 5 points also cure the Poisoned condition.",
+        procedure: "Your pool holds {L} × 5 Hit Points, back on a Long Rest. Bonus Action: touch a creature (including yourself) and spend any amount. Spending 5 to remove Poisoned heals nothing." },
+      { level: 1, name: "Spellcasting (Paladin)", description: "Half caster: Charisma-based Paladin spells, prepared and swappable on a Long Rest.",
+        procedure: "Set Spell ability to Charisma. Your spell save DC is {DC}. You get spell slots from level 1 in the 2024 rules." },
+      { level: 1, name: "Weapon Mastery (Paladin)", description: "Use the mastery properties of two kinds of weapons you're proficient with; change them on a Long Rest.",
+        procedure: "Longswords and Javelins are the usual pick. The mastery is shown on each weapon's action." },
+      { level: 2, name: "Fighting Style (Paladin)", description: "A Fighting Style feat, or Blessed Warrior: two Cleric cantrips.",
+        procedure: "Add the fighting style from the feat quick-pick, or the cantrips from the spell picker (Guidance and Sacred Flame are recommended)." },
+      { level: 2, name: "Paladin's Smite", description: "Divine Smite is always prepared, and once per Long Rest you can cast it without a slot.",
+        procedure: "Add Divine Smite with the spell picker. The free casting recharges on a Long Rest." },
+      { level: 3, name: "Channel Divinity: Divine Sense", time: "bonus", description: "Bonus Action: for 10 minutes, sense Celestials, Fiends and Undead within 60 ft, and consecrated or desecrated places.",
+        procedure: "Costs one use of Channel Divinity (two uses, one back on a Short Rest, a third at level 11). Ends if you become Incapacitated." },
+      { level: 5, name: "Extra Attack", description: "Attack twice with the Attack action.",
+        procedure: "Roll each attack separately — the app resolves one at a time." },
+      { level: 5, name: "Faithful Steed", description: "Find Steed is always prepared, and free once per Long Rest.",
+        procedure: "Add Find Steed with the spell picker." },
+      { level: 6, name: "Aura of Protection", description: "You and allies within 10 ft add your Charisma modifier to saving throws (30 ft at level 18).",
+        procedure: "The bonus is {CHA} (minimum +1). The aura switches off while you're Incapacitated." },
+      { level: 9, name: "Abjure Foes", time: "action", attack: "save", saveAbility: "wis", saveHalf: false,
+        description: "Channel Divinity: CHA modifier creatures within 60 ft make a WIS save or are Frightened for 1 minute.",
+        procedure: "Target up to {CHA} creatures (minimum 1). WIS save vs. DC {DC}. While Frightened this way, a target may only move, or act, on its turn — and any damage ends it." },
+      { level: 10, name: "Aura of Courage", description: "You and your allies are immune to the Frightened condition inside your Aura of Protection.",
+        procedure: "A Frightened ally entering the aura is unaffected while it stays there." },
+      { level: 11, name: "Radiant Strikes", as: "option",
+        description: "Melee weapon and Unarmed Strike hits deal an extra 1d8 Radiant damage.",
+        applies: { mode: "tags", tags: ["melee"], actionIds: [] }, requires: "attack",
+        effects: { dice: [{ expr: "1d8", type: "radiant" }], note: "Every melee hit, not once per turn." } },
+      { level: 14, name: "Restoring Touch", description: "Lay On Hands can also remove Blinded, Charmed, Deafened, Frightened, Paralyzed or Stunned — 5 points each.",
+        procedure: "Those points don't heal; you can remove several conditions in one touch." },
+      { level: 18, name: "Aura Expansion", description: "Your Aura of Protection becomes a 30-ft Emanation.",
+        procedure: "Everything that keyed off the 10-ft aura now reaches 30 ft." },
+    ],
+    subclasses: {
+      "Oath of Devotion": [
+        { level: 3, name: "Oath of Devotion Spells", description: "Always prepared: 3 Protection from Evil and Good, Shield of Faith; 5 Aid, Zone of Truth; 9 Beacon of Hope, Dispel Magic; 13 Freedom of Movement, Guardian of Faith; 17 Commune, Flame Strike.",
+          procedure: "Add them with the spell picker — they don't count against your prepared spells." },
+        { level: 3, name: "Sacred Weapon", as: "option",
+          description: "Channel Divinity: for 10 minutes add your Charisma modifier to attack rolls with one Melee weapon, which can deal Radiant damage and sheds light.",
+          applies: { mode: "tags", tags: ["melee"], actionIds: [] }, requires: "attack",
+          effects: { note: "Add {CHA} to the attack roll (minimum +1) — set it as a to-hit bonus on this option. Each hit can deal Radiant instead of the weapon's type. Bright Light 20 ft, Dim Light 20 ft beyond. Costs one use of Channel Divinity, activated as part of the Attack action." } },
+        { level: 7, name: "Aura of Devotion", description: "You and your allies are immune to the Charmed condition inside your Aura of Protection.",
+          procedure: "A Charmed ally entering the aura is unaffected while it stays there." },
+        { level: 15, name: "Smite of Protection", description: "Casting Divine Smite gives you and allies in your aura Half Cover until your next turn.",
+          procedure: "Half Cover is +2 AC and +2 to DEX saves." },
+        { level: 20, name: "Holy Nimbus", time: "bonus", description: "Bonus Action: 10 minutes of holy power — Advantage on saves forced by Fiends and Undead, Bright Light, and Radiant damage to enemies in your aura.",
+          procedure: "Once per Long Rest, or spend a level 5 spell slot to restore it." },
+      ],
+      "Oath of Glory": [
+        { level: 3, name: "Inspiring Smite", description: "Channel Divinity right after Divine Smite: hand out 2d8 + your Paladin level in Temporary Hit Points within 30 ft.",
+          procedure: "Roll 2d8 + {L} and divide the total among creatures of your choice within 30 ft, yourself included." },
+        { level: 3, name: "Oath of Glory Spells", description: "Always prepared: 3 Guiding Bolt, Heroism; 5 Enhance Ability, Magic Weapon; 9 Haste, Protection from Energy; 13 Compulsion, Freedom of Movement; 17 Legend Lore, Yolande's Regal Presence.",
+          procedure: "Add them with the spell picker — they don't count against your prepared spells." },
+        { level: 3, name: "Peerless Athlete", time: "bonus", description: "Channel Divinity: 1 hour of Advantage on Athletics and Acrobatics, and +10 ft on jumps.",
+          procedure: "The extra jump distance still costs movement." },
+        { level: 7, name: "Aura of Alacrity", description: "Your Speed +10 ft; allies entering your aura gain +10 ft Speed until the end of their next turn.",
+          procedure: "Raise your Speed in Edit → Character." },
+        { level: 15, name: "Glorious Defense", time: "reaction", description: "Reaction: add your Charisma modifier to the AC of yourself or a creature within 10 ft against one attack — and counterattack if it misses.",
+          procedure: "The bonus is {CHA} (minimum +1). On a miss you may make one weapon attack against the attacker as part of the same Reaction. {CHA} uses per Long Rest." },
+        { level: 20, name: "Living Legend", time: "bonus", description: "Bonus Action for 10 minutes: Charisma-based Advantage, a missed attack rerolled once per turn, and failed saves turned into successes.",
+          procedure: "Once per Long Rest, or spend a level 5 spell slot to restore it." },
+      ],
+      "Oath of the Ancients": [
+        { level: 3, name: "Nature's Wrath", time: "action", attack: "save", saveAbility: "str", saveHalf: false,
+          description: "Channel Divinity: creatures within 15 ft make a STR save or are Restrained for 1 minute.",
+          procedure: "Choose who is affected within 15 ft; each makes a STR save vs. DC {DC}, repeated at the end of each of its turns." },
+        { level: 3, name: "Oath of the Ancients Spells", description: "Always prepared: 3 Ensnaring Strike, Speak with Animals; 5 Misty Step, Moonbeam; 9 Plant Growth, Protection from Energy; 13 Ice Storm, Stoneskin; 17 Commune with Nature, Tree Stride.",
+          procedure: "Add them with the spell picker — they don't count against your prepared spells." },
+        { level: 7, name: "Aura of Warding", description: "You and your allies have Resistance to Necrotic, Psychic and Radiant damage inside your Aura of Protection.",
+          procedure: "Halve that damage while in the aura." },
+        { level: 15, name: "Undying Sentinel", description: "Drop to 1 Hit Point instead of 0 and regain three times your Paladin level. Once per Long Rest.",
+          procedure: "That's {L} × 3 Hit Points. You also stop aging visibly." },
+        { level: 20, name: "Elder Champion", time: "bonus", description: "Bonus Action for 1 minute: regain 10 HP at the start of each turn, cast Paladin spells as a Bonus Action, and enemies have Disadvantage on saves against your spells and Channel Divinity.",
+          procedure: "Once per Long Rest, or spend a level 5 spell slot to restore it." },
+      ],
+      "Oath of Vengeance": [
+        { level: 3, name: "Oath of Vengeance Spells", description: "Always prepared: 3 Bane, Hunter's Mark; 5 Hold Person, Misty Step; 9 Haste, Protection from Energy; 13 Banishment, Dimension Door; 17 Hold Monster, Scrying.",
+          procedure: "Add them with the spell picker — they don't count against your prepared spells." },
+        { level: 3, name: "Vow of Enmity", as: "option",
+          description: "Channel Divinity as part of the Attack action: Advantage on attacks against one creature within 30 ft for 1 minute.",
+          applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack",
+          effects: { advantage: true, note: "Only against the sworn target. Costs one use of Channel Divinity when you declare the vow; if the target drops to 0 HP you may move the vow to another creature within 30 ft." } },
+        { level: 7, name: "Relentless Avenger", time: "reaction", description: "An Opportunity Attack hit drops the target's Speed to 0, and you may move half your Speed.",
+          procedure: "The movement is part of the same Reaction and provokes no Opportunity Attacks." },
+        { level: 15, name: "Soul of Vengeance", time: "reaction", description: "Reaction: attack a creature under your Vow of Enmity right after it makes an attack.",
+          procedure: "One melee attack against the sworn target." },
+        { level: 20, name: "Avenging Angel", time: "bonus", description: "Bonus Action for 10 minutes: a Fly Speed of 60 ft, and enemies that start their turn within 30 ft make a WIS save or are Frightened.",
+          procedure: "WIS save vs. DC {DC}. Once per Long Rest, or spend a level 5 spell slot to restore it." },
+      ],
+    },
+  },
+
+  Wizard: {
+    features: [
+      { level: 1, name: "Spellcasting (Wizard)", description: "Full caster: Intelligence-based spells prepared from your spellbook.",
+        procedure: "Set Spell ability to Intelligence. Your spell save DC is {DC} and your spell attack bonus is {INT} + {PB}." },
+      { level: 1, name: "Ritual Adept", description: "Cast any Ritual-tagged spell in your spellbook as a Ritual, prepared or not.",
+        procedure: "You must read from the book to do it — it takes 10 minutes longer and costs no slot." },
+      { level: 1, name: "Arcane Recovery", description: "On a Short Rest, recover spell slots totalling half your Wizard level (round up), none above level 5. Once per Long Rest.",
+        procedure: "At level {L} that's up to {L} halved, rounded up, in slot levels — click the slot pips back on." },
+      { level: 2, name: "Scholar", description: "Expertise in one of Arcana, History, Investigation, Medicine, Nature or Religion.",
+        procedure: "Set that skill to 2 in the sheet's skill list." },
+      { level: 5, name: "Memorize Spell", description: "On a Short Rest, swap one prepared level 1+ spell for another from your spellbook.",
+        procedure: "No roll — just change which spells are on the sheet." },
+      { level: 18, name: "Spell Mastery", description: "Cast one level 1 and one level 2 spell from your book at will, at their lowest level.",
+        procedure: "Both must have a casting time of an action. Swap them on a Long Rest." },
+      { level: 20, name: "Signature Spells", description: "Two level 3 spells are always prepared and free once each per Short Rest.",
+        procedure: "Casting them above level 3 still costs a slot." },
+    ],
+    subclasses: {
+      "Abjurer": [
+        { level: 3, name: "Abjuration Savant", description: "Two free Abjuration spells of level 2 or lower in your book, plus one more at each new slot level.",
+          procedure: "No roll — copying these costs nothing in time or money." },
+        { level: 3, name: "Arcane Ward", description: "Casting an Abjuration spell with a slot creates a ward with 2 × Wizard level + INT Hit Points that soaks damage for you.",
+          procedure: "The ward holds {L} × 2 + {INT} Hit Points. Abjuration spells restore twice the slot's level, or spend a slot as a Bonus Action for the same. Once per Long Rest to create." },
+        { level: 6, name: "Projected Ward", time: "reaction", description: "Reaction: your Arcane Ward absorbs damage for a creature within 30 ft.",
+          procedure: "Any damage beyond the ward's remaining Hit Points still hits that creature." },
+        { level: 10, name: "Spell Breaker", description: "Counterspell and Dispel Magic always prepared; Dispel Magic as a Bonus Action with your PB added, and the slot isn't spent if it fails.",
+          procedure: "Add {PB} to Dispel Magic's ability check." },
+        { level: 14, name: "Spell Resistance", description: "Advantage on saving throws against spells, and Resistance to spell damage.",
+          procedure: "Passive." },
+      ],
+      "Diviner": [
+        { level: 3, name: "Divination Savant", description: "Two free Divination spells of level 2 or lower in your book, plus one more at each new slot level.",
+          procedure: "No roll — copying these costs nothing in time or money." },
+        { level: 3, name: "Portent", description: "On a Long Rest, roll two d20s and keep them; replace any D20 Test you or a visible creature makes with one of them.",
+          procedure: "Declare it before the roll, once per turn. Unused rolls are lost on your next Long Rest. Three dice at level 14." },
+        { level: 6, name: "Expert Divination", description: "Casting a Divination spell with a level 2+ slot returns one lower-level slot (max level 5).",
+          procedure: "Click the recovered slot pip back on after casting." },
+        { level: 10, name: "The Third Eye", time: "bonus", description: "Bonus Action: Darkvision 120 ft, read any language, or a free See Invisibility, until your next rest.",
+          procedure: "Once per Short or Long Rest." },
+        { level: 14, name: "Greater Portent", description: "Roll three d20s for Portent instead of two.",
+          procedure: "Otherwise as Portent." },
+      ],
+      "Evoker": [
+        { level: 3, name: "Evocation Savant", description: "Two free Evocation spells of level 2 or lower in your book, plus one more at each new slot level.",
+          procedure: "No roll — copying these costs nothing in time or money." },
+        { level: 3, name: "Potent Cantrip", description: "A damaging cantrip still deals half damage on a miss or a successful save.",
+          procedure: "The target suffers none of the cantrip's other effects — just half the damage." },
+        { level: 6, name: "Sculpt Spells", description: "When you cast an Evocation spell, 1 + the spell's level creatures automatically succeed and take no damage.",
+          procedure: "Choose them as you cast — at level 3 that's four allies safe inside a Fireball." },
+        { level: 10, name: "Empowered Evocation", as: "option",
+          description: "Add your Intelligence modifier to one damage roll of any Wizard Evocation spell.",
+          applies: { mode: "tags", tags: ["evocation"], actionIds: [] }, requires: "any",
+          effects: { dice: [{ expr: "INT", type: "" }], note: "Evocation spells only, one damage roll per casting." } },
+        { level: 14, name: "Overchannel", description: "A damaging spell cast with a level 1-5 slot deals maximum damage. Free once, then 2d12 Necrotic per use, growing each time.",
+          procedure: "The first use after a Long Rest is free. Each further use before a Long Rest costs you 2d12 Necrotic (unpreventable), rising by 1d12 each time." },
+      ],
+      "Illusionist": [
+        { level: 3, name: "Illusion Savant", description: "Two free Illusion spells of level 2 or lower in your book, plus one more at each new slot level.",
+          procedure: "No roll — copying these costs nothing in time or money." },
+        { level: 3, name: "Improved Illusions", description: "Illusion spells need no Verbal components and gain +60 ft range; Minor Illusion is free, makes sound and image at once, and casts as a Bonus Action.",
+          procedure: "The extra range applies to Illusion spells of range 10 ft or more." },
+        { level: 6, name: "Phantasmal Creatures", description: "Summon Beast and Summon Fey always prepared, castable as Illusion versions without a slot (half Hit Points).",
+          procedure: "Each free casting recharges on a Long Rest." },
+        { level: 10, name: "Illusory Self", time: "reaction", description: "Reaction: an attack that hits you automatically misses instead.",
+          procedure: "Once per Short or Long Rest, or spend a level 2+ spell slot to restore it." },
+        { level: 14, name: "Illusory Reality", time: "bonus", description: "Bonus Action: make one inanimate object in your illusion real for 1 minute.",
+          procedure: "The real object can't deal damage or impose conditions — but you can walk across it." },
+      ],
+    },
+  },
+};
+
+// 2024 spells (PHB ch. 7). Scope: every Cleric, Paladin and Wizard spell of
+// level 0-3 — what this party can actually cast. `classes` is for the filter in
+// the spell picker; `description` is the short version, `procedure` the "what do
+// I roll" line shown in the resolution steps.
+const SPELL_LIBRARY = [
+  /* ================= CANTRIPS ================= */
+  { name: "Acid Splash", level: 0, school: "Evocation", classes: ["wizard"], time: "action", range: "60 ft", duration: "Instantaneous",
+    attack: "save", saveAbility: "dex", saveHalf: false, damage: [{ expr: "1d6", type: "acid" }], damageScale: "cantrip",
+    description: "5-ft-radius Sphere. DEX save or 1d6 Acid.",
+    procedure: "Everyone in the 5-ft-radius Sphere makes a DEX save vs. your spell DC. Fail = full damage, success = none." },
+  { name: "Blade Ward", level: 0, school: "Abjuration", classes: ["wizard"], time: "action", range: "Self", duration: "Concentration, 1 min", conc: true,
+    attack: "none",
+    description: "Attackers subtract 1d4 from attack rolls against you.",
+    procedure: "No roll. Until the spell ends, every attack roll against you is made at −1d4." },
+  { name: "Chill Touch", level: 0, school: "Necromancy", classes: ["wizard"], time: "action", range: "Touch", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "1d10", type: "necrotic" }], damageScale: "cantrip",
+    description: "Melee spell attack, 1d10 Necrotic; the target can't heal until the end of your next turn.",
+    procedure: "Make a melee spell attack. On a hit, apply the damage — the target can't regain Hit Points until the end of your next turn." },
+  { name: "Dancing Lights", level: 0, school: "Illusion", classes: ["wizard"], time: "action", range: "120 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "none",
+    description: "Four hovering torch-lights (or one humanlike form), each Dim Light in a 10-ft radius.",
+    procedure: "No roll. Bonus Action to move the lights up to 60 ft; each must stay within 20 ft of another." },
+  { name: "Elementalism", level: 0, school: "Transmutation", classes: ["wizard"], time: "action", range: "30 ft", duration: "Instantaneous",
+    attack: "none",
+    description: "Minor elemental effect: Beckon Air / Earth / Fire / Water, or Sculpt Element.",
+    procedure: "No roll — pick one effect. Sculpt Element shapes a 1-ft Cube of dirt, sand, fire, smoke, mist or water for 1 hour." },
+  { name: "Fire Bolt", level: 0, school: "Evocation", classes: ["wizard"], time: "action", range: "120 ft", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "1d10", type: "fire" }], damageScale: "cantrip",
+    description: "Ranged spell attack, 1d10 Fire; unattended flammable objects ignite.",
+    procedure: "Make a ranged spell attack. On a hit, apply the fire damage." },
+  { name: "Friends", level: 0, school: "Enchantment", classes: ["wizard"], time: "action", range: "10 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false,
+    description: "WIS save or Charmed. Fails automatically against non-Humanoids and anyone you're fighting.",
+    procedure: "Target makes a WIS save vs. DC {DC} or is Charmed. It ends early if the target takes damage or you attack — and then it knows you charmed it." },
+  { name: "Guidance", level: 0, school: "Divination", classes: ["cleric"], time: "action", range: "Touch", duration: "Concentration, 1 min", conc: true,
+    attack: "none",
+    description: "A willing creature adds 1d4 to ability checks with one chosen skill.",
+    procedure: "No roll to cast. The target adds 1d4 to any check using the chosen skill until the spell ends." },
+  { name: "Light", level: 0, school: "Evocation", classes: ["cleric", "wizard"], time: "action", range: "Touch", duration: "1 hour",
+    attack: "none",
+    description: "An object sheds Bright Light in a 20-ft radius and Dim Light 20 ft beyond.",
+    procedure: "No roll. Covering the object blocks the light; casting it again ends it." },
+  { name: "Mage Hand", level: 0, school: "Conjuration", classes: ["wizard"], time: "action", range: "30 ft", duration: "1 min",
+    attack: "none",
+    description: "A spectral hand that manipulates objects, up to 10 lb. It can't attack or use magic items.",
+    procedure: "No roll. Magic action on later turns to control it again and move it up to 30 ft." },
+  { name: "Mending", level: 0, school: "Transmutation", classes: ["cleric", "wizard"], time: "none", range: "Touch", duration: "Instantaneous",
+    attack: "none",
+    description: "Repairs one break or tear no larger than 1 ft. Casting time 1 minute.",
+    procedure: "Takes 1 minute, no roll. It can repair a magic item physically, but not restore its magic." },
+  { name: "Message", level: 0, school: "Transmutation", classes: ["wizard"], time: "action", range: "120 ft", duration: "1 round",
+    attack: "none",
+    description: "Whisper a message only one creature hears; it can whisper back.",
+    procedure: "No roll. Blocked by magical silence, 1 ft of stone/metal/wood, or a thin sheet of lead." },
+  { name: "Mind Sliver", level: 0, school: "Enchantment", classes: ["wizard"], time: "action", range: "60 ft", duration: "1 round",
+    attack: "save", saveAbility: "int", saveHalf: false, damage: [{ expr: "1d6", type: "psychic" }], damageScale: "cantrip",
+    description: "INT save or 1d6 Psychic and −1d4 on the target's next save.",
+    procedure: "INT save vs. your spell DC. On a fail: damage, and the target subtracts 1d4 from its next saving throw before the end of your next turn." },
+  { name: "Minor Illusion", level: 0, school: "Illusion", classes: ["wizard"], time: "action", range: "30 ft", duration: "1 min",
+    attack: "none",
+    description: "Create a sound, or an image no larger than a 5-ft Cube.",
+    procedure: "No roll to cast. A creature that Studies it makes an Investigation check vs. DC {DC} to see through it." },
+  { name: "Poison Spray", level: 0, school: "Necromancy", classes: ["wizard"], time: "action", range: "30 ft", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "1d12", type: "poison" }], damageScale: "cantrip",
+    description: "Ranged spell attack, 1d12 Poison.",
+    procedure: "Make a ranged spell attack. On a hit, apply the poison damage." },
+  { name: "Prestidigitation", level: 0, school: "Transmutation", classes: ["wizard"], time: "action", range: "10 ft", duration: "Up to 1 hour",
+    attack: "none",
+    description: "Small magical trick: sensory effect, fire play, clean or soil, minor sensation, magic mark, or minor creation.",
+    procedure: "No roll. Up to three non-instantaneous effects can be active at once." },
+  { name: "Ray of Frost", level: 0, school: "Evocation", classes: ["wizard"], time: "action", range: "60 ft", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "1d8", type: "cold" }], damageScale: "cantrip",
+    description: "Ranged spell attack, 1d8 Cold and −10 ft Speed until your next turn.",
+    procedure: "Make a ranged spell attack. On a hit, apply the damage and reduce the target's Speed by 10 ft until the start of your next turn." },
+  { name: "Resistance", level: 0, school: "Abjuration", classes: ["cleric"], time: "action", range: "Touch", duration: "Concentration, 1 min", conc: true,
+    attack: "none",
+    description: "A willing creature reduces damage of one chosen type by 1d4, once per turn.",
+    procedure: "No roll to cast. Choose the damage type when you cast it." },
+  { name: "Sacred Flame", level: 0, school: "Evocation", classes: ["cleric"], time: "action", range: "60 ft", duration: "Instantaneous",
+    attack: "save", saveAbility: "dex", saveHalf: false, damage: [{ expr: "1d8", type: "radiant" }], damageScale: "cantrip",
+    description: "DEX save or 1d8 Radiant. Cover doesn't help the target.",
+    procedure: "Target makes a DEX save vs. your spell DC — no benefit from Half or Three-Quarters Cover. Fail = full damage, success = none." },
+  { name: "Shocking Grasp", level: 0, school: "Evocation", classes: ["wizard"], time: "action", range: "Touch", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "1d8", type: "lightning" }], damageScale: "cantrip",
+    description: "Melee spell attack, 1d8 Lightning; the target can't make Opportunity Attacks until its next turn.",
+    procedure: "Make a melee spell attack. On a hit, apply the damage — no Opportunity Attacks from the target until the start of its next turn." },
+  { name: "Spare the Dying", level: 0, school: "Necromancy", classes: ["cleric"], time: "action", range: "15 ft", duration: "Instantaneous",
+    attack: "none",
+    description: "A creature at 0 Hit Points becomes Stable. Range doubles at levels 5/11/17.",
+    procedure: "No roll. Range: 15 ft, 30 ft at level 5, 60 ft at 11, 120 ft at 17." },
+  { name: "Thaumaturgy", level: 0, school: "Transmutation", classes: ["cleric"], time: "action", range: "30 ft", duration: "Up to 1 min",
+    attack: "none",
+    description: "Minor wonder: altered eyes, booming voice, fire play, invisible hand, phantom sound, or tremors.",
+    procedure: "No roll. Booming Voice also gives Advantage on Intimidation checks for the minute." },
+  { name: "Thunderclap", level: 0, school: "Evocation", classes: ["wizard"], time: "action", range: "Self (5-ft Emanation)", duration: "Instantaneous",
+    attack: "save", saveAbility: "con", saveHalf: false, damage: [{ expr: "1d6", type: "thunder" }], damageScale: "cantrip",
+    description: "Everyone in a 5-ft Emanation: CON save or 1d6 Thunder. Heard 100 ft away.",
+    procedure: "Every creature in the 5-ft Emanation (allies included) makes a CON save vs. your spell DC." },
+  { name: "Toll the Dead", level: 0, school: "Necromancy", classes: ["cleric", "wizard"], time: "action", range: "60 ft", duration: "Instantaneous",
+    attack: "save", saveAbility: "wis", saveHalf: false, damage: [{ expr: "1d8", type: "necrotic" }], damageScale: "cantrip",
+    description: "WIS save or 1d8 Necrotic — 1d12 instead if the target is already wounded.",
+    procedure: "WIS save vs. your spell DC. Roll 1d8 per die shown, or swap to d12s if the target is missing any Hit Points." },
+  { name: "True Strike", level: 0, school: "Divination", classes: ["wizard"], time: "action", range: "Self", duration: "Instantaneous",
+    attack: "attack",
+    description: "One weapon attack that uses your spellcasting ability, dealing Radiant or the weapon's damage. Extra 1d6 Radiant at level 5.",
+    procedure: "Attack with the weapon you cast this with, but use your spellcasting modifier for the attack and damage rolls. Extra Radiant damage: 1d6 at level 5, 2d6 at 11, 3d6 at 17." },
+  { name: "Word of Radiance", level: 0, school: "Evocation", classes: ["cleric"], time: "action", range: "Self (5-ft Emanation)", duration: "Instantaneous",
+    attack: "save", saveAbility: "con", saveHalf: false, damage: [{ expr: "1d6", type: "radiant" }], damageScale: "cantrip",
+    description: "Creatures of your choice in a 5-ft Emanation: CON save or 1d6 Radiant.",
+    procedure: "You choose who in the Emanation is affected — each makes a CON save vs. your spell DC." },
+
+  /* ================= LEVEL 1 ================= */
+  { name: "Alarm", level: 1, school: "Abjuration", classes: ["wizard"], time: "none", range: "30 ft", duration: "8 hours", ritual: true,
+    attack: "none",
+    description: "Ward a 20-ft Cube; an audible or mental alarm warns you of intruders. 1 minute or Ritual.",
+    procedure: "No roll. Name the creatures that won't trigger it when you cast it." },
+  { name: "Bane", level: 1, school: "Enchantment", classes: ["cleric"], time: "action", range: "30 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "cha", saveHalf: false, count: 3, countLabel: "creatures", upcast: { mode: "count" },
+    description: "Up to three creatures: CHA save or subtract 1d4 from their attack rolls and saves.",
+    procedure: "Each target makes a CHA save vs. DC {DC}. Those that fail subtract 1d4 from every attack roll and save while the spell lasts." },
+  { name: "Bless", level: 1, school: "Enchantment", classes: ["cleric", "paladin"], time: "action", range: "30 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "none", count: 3, countLabel: "creatures", upcast: { mode: "count" },
+    description: "Up to three creatures add 1d4 to attack rolls and saving throws.",
+    procedure: "No roll to cast. Each blessed creature adds 1d4 to every attack roll and saving throw until the spell ends." },
+  { name: "Charm Person", level: 1, school: "Enchantment", classes: ["wizard"], time: "action", range: "30 ft", duration: "1 hour",
+    attack: "save", saveAbility: "wis", saveHalf: false, count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "One Humanoid: WIS save or Charmed and Friendly for 1 hour.",
+    procedure: "WIS save vs. DC {DC} — with Advantage if you or your allies are fighting it. It ends if you damage the target, and then it knows." },
+  { name: "Chromatic Orb", level: 1, school: "Evocation", classes: ["wizard"], time: "action", range: "90 ft", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "3d8", type: "fire" }], upcast: { mode: "dice", expr: "1d8", type: "fire" },
+    description: "Ranged spell attack, 3d8 of a type you choose (Acid, Cold, Fire, Lightning, Poison, Thunder). Doubles on the d8s make it leap.",
+    procedure: "Choose the damage type (change it on the damage row). Ranged spell attack; on a hit, apply the damage. If two or more d8s match, the orb leaps to another target within 30 ft — new attack roll, new damage. It can leap only with a level 2+ slot, at most once per slot level." },
+  { name: "Color Spray", level: 1, school: "Illusion", classes: ["wizard"], time: "action", range: "Self (15-ft Cone)", duration: "Instantaneous",
+    attack: "save", saveAbility: "con", saveHalf: false,
+    description: "15-ft Cone: CON save or Blinded until the end of your next turn.",
+    procedure: "Every creature in the Cone makes a CON save vs. DC {DC}. No damage — just the Blinded condition." },
+  { name: "Command", level: 1, school: "Enchantment", classes: ["cleric", "paladin"], time: "action", range: "60 ft", duration: "Instantaneous",
+    attack: "save", saveAbility: "wis", saveHalf: false, count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "One-word command: WIS save or the target obeys on its next turn (Approach, Drop, Flee, Grovel, Halt).",
+    procedure: "WIS save vs. DC {DC}. On a fail it follows the command on its next turn." },
+  { name: "Compelled Duel", level: 1, school: "Enchantment", classes: ["paladin"], time: "bonus", range: "30 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false,
+    description: "WIS save or the target has Disadvantage attacking anyone but you and can't move more than 30 ft from you.",
+    procedure: "WIS save vs. DC {DC}. The spell ends if you attack someone else, target another enemy with a spell, an ally damages the target, or you end your turn more than 30 ft away." },
+  { name: "Comprehend Languages", level: 1, school: "Divination", classes: ["wizard"], time: "action", range: "Self", duration: "1 hour", ritual: true,
+    attack: "none",
+    description: "Understand any spoken, signed or (by touch) written language.",
+    procedure: "No roll. About 1 minute per page of text; it doesn't decode ciphers or secret messages." },
+  { name: "Create or Destroy Water", level: 1, school: "Transmutation", classes: ["cleric"], time: "action", range: "30 ft", duration: "Instantaneous",
+    attack: "none", upcast: { mode: "none" },
+    description: "Create or destroy up to 10 gallons of water, or rain/fog in a 30-ft Cube.",
+    procedure: "No roll. Upcast: +10 gallons, or +5 ft of Cube, per slot level above 1." },
+  { name: "Cure Wounds", level: 1, school: "Abjuration", classes: ["cleric", "paladin"], time: "action", range: "Touch", duration: "Instantaneous",
+    attack: "none", damage: [{ expr: "2d8+MOD", type: "healing" }], upcast: { mode: "dice", expr: "2d8", type: "healing" },
+    description: "Touch: heal 2d8 + your spellcasting modifier. +2d8 per slot level above 1.",
+    procedure: "No roll to hit — touch the creature and roll the healing." },
+  { name: "Detect Evil and Good", level: 1, school: "Divination", classes: ["cleric", "paladin"], time: "action", range: "Self", duration: "Concentration, 10 min", conc: true,
+    attack: "none",
+    description: "Sense Aberrations, Celestials, Elementals, Fey, Fiends and Undead within 30 ft.",
+    procedure: "No roll. Blocked by 1 ft of stone/dirt/wood, 1 inch of metal, or a thin sheet of lead." },
+  { name: "Detect Magic", level: 1, school: "Divination", classes: ["cleric", "paladin", "wizard"], time: "action", range: "Self", duration: "Concentration, 10 min", conc: true, ritual: true,
+    attack: "none",
+    description: "Sense magic within 30 ft; a Magic action reveals the aura and school.",
+    procedure: "No roll. Blocked by 1 ft of stone/dirt/wood, 1 inch of metal, or a thin sheet of lead." },
+  { name: "Detect Poison and Disease", level: 1, school: "Divination", classes: ["cleric", "paladin"], time: "action", range: "Self", duration: "Concentration, 10 min", conc: true, ritual: true,
+    attack: "none",
+    description: "Sense poisons, venomous creatures and magical contagions within 30 ft.",
+    procedure: "No roll. You learn the kind of poison, creature or contagion in each case." },
+  { name: "Disguise Self", level: 1, school: "Illusion", classes: ["wizard"], time: "action", range: "Self", duration: "1 hour",
+    attack: "none",
+    description: "Change your appearance and gear; 1 ft taller or shorter, same limb arrangement.",
+    procedure: "No roll to cast. To see through it, a creature must Study you and beat DC {DC} on an Investigation check. Physical inspection gives it away." },
+  { name: "Divine Favor", level: 1, school: "Transmutation", classes: ["paladin"], time: "bonus", range: "Self", duration: "1 min",
+    attack: "none",
+    description: "Your weapon attacks deal an extra 1d4 Radiant damage on a hit.",
+    procedure: "Cast it, then add 1d4 Radiant to each weapon hit for the minute — add it as an Option if you want it on the attack rows." },
+  { name: "Divine Smite", level: 1, school: "Evocation", classes: ["paladin"], time: "bonus", range: "Self", duration: "Instantaneous",
+    attack: "none", damage: [{ expr: "2d8", type: "radiant" }], upcast: { mode: "dice", expr: "1d8", type: "radiant" },
+    description: "Right after a melee hit: +2d8 Radiant (+1d8 vs. Fiends and Undead). +1d8 per slot level above 1.",
+    procedure: "Bonus Action taken immediately after hitting with a Melee weapon or an Unarmed Strike. Add 1d8 more if the target is a Fiend or an Undead." },
+  { name: "Expeditious Retreat", level: 1, school: "Transmutation", classes: ["wizard"], time: "bonus", range: "Self", duration: "Concentration, 10 min", conc: true,
+    attack: "none",
+    description: "Dash now, and Dash as a Bonus Action every turn while it lasts.",
+    procedure: "No roll. Casting it also gives you the Dash action right away." },
+  { name: "False Life", level: 1, school: "Necromancy", classes: ["wizard"], time: "action", range: "Self", duration: "Instantaneous",
+    attack: "none", damage: [{ expr: "2d4+4", type: "healing" }],
+    description: "Gain 2d4 + 4 Temporary Hit Points. +5 per slot level above 1.",
+    procedure: "Roll the dice — these are Temporary Hit Points, not healing, so they don't stack with other temp HP." },
+  { name: "Feather Fall", level: 1, school: "Transmutation", classes: ["wizard"], time: "reaction", range: "60 ft", duration: "1 min",
+    attack: "none", count: 5, countLabel: "falling creatures",
+    description: "Reaction when someone falls: up to five creatures descend at 60 ft per round and take no fall damage.",
+    procedure: "Reaction taken when you or a creature you can see within 60 ft falls." },
+  { name: "Find Familiar", level: 1, school: "Conjuration", classes: ["wizard"], time: "none", range: "10 ft", duration: "Instantaneous", ritual: true,
+    attack: "none",
+    description: "A CR 0 Beast-shaped spirit serves you: telepathy within 100 ft, shared senses, and it can deliver touch spells. 1 hour or Ritual.",
+    procedure: "The familiar rolls its own Initiative and can't attack. Bonus Action to see through its eyes. It can deliver your touch spells with its Reaction." },
+  { name: "Guiding Bolt", level: 1, school: "Evocation", classes: ["cleric"], time: "action", range: "120 ft", duration: "1 round",
+    attack: "attack", damage: [{ expr: "4d6", type: "radiant" }], upcast: { mode: "dice", expr: "1d6", type: "radiant" },
+    description: "Ranged spell attack, 4d6 Radiant; the next attack against the target has Advantage.",
+    procedure: "Make a ranged spell attack. On a hit, apply the damage — the next attack roll against that target before the end of your next turn has Advantage." },
+  { name: "Heroism", level: 1, school: "Enchantment", classes: ["paladin"], time: "action", range: "Touch", duration: "Concentration, 1 min", conc: true,
+    attack: "none", count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "A willing creature is immune to Frightened and gains Temporary HP equal to your spellcasting modifier at the start of each of its turns.",
+    procedure: "No roll. The temp HP arrive at the start of each of the target's turns, so they refresh every round." },
+  { name: "Illusory Script", level: 1, school: "Illusion", classes: ["wizard"], time: "none", range: "Touch", duration: "10 days", ritual: true,
+    attack: "none",
+    description: "Writing only chosen readers can understand; others see gibberish. 1 minute or Ritual.",
+    procedure: "No roll. Truesight sees through it." },
+  { name: "Inflict Wounds", level: 1, school: "Necromancy", classes: ["cleric"], time: "action", range: "Touch", duration: "Instantaneous",
+    attack: "save", saveAbility: "con", saveHalf: true, damage: [{ expr: "2d10", type: "necrotic" }], upcast: { mode: "dice", expr: "1d10", type: "necrotic" },
+    description: "Touch: CON save, 2d10 Necrotic, half on a success. +1d10 per slot level above 1.",
+    procedure: "Touch the creature — no attack roll in the 2024 rules. It makes a CON save vs. DC {DC}: fail = full damage, success = half." },
+  { name: "Jump", level: 1, school: "Transmutation", classes: ["wizard"], time: "bonus", range: "Touch", duration: "1 min",
+    attack: "none", count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "A willing creature's jump distance triples.",
+    procedure: "No roll. Upcast targets one more creature per slot level above 1." },
+  { name: "Longstrider", level: 1, school: "Transmutation", classes: ["wizard"], time: "action", range: "Touch", duration: "1 hour",
+    attack: "none", count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "A creature's Speed increases by 10 ft for 1 hour.",
+    procedure: "No roll. Upcast targets one more creature per slot level above 1." },
+  { name: "Magic Missile", level: 1, school: "Evocation", classes: ["wizard"], time: "action", range: "120 ft", duration: "Instantaneous",
+    attack: "none", damage: [{ expr: "1d4+1", type: "force" }], count: 3, countLabel: "darts", upcast: { mode: "count" },
+    description: "Three darts hit automatically, each 1d4+1 Force. Split them as you like. +1 dart per slot level above 1.",
+    procedure: "No attack roll — the darts always hit. Roll damage per dart (or roll once and multiply, if your table plays it that way)." },
+  { name: "Protection from Evil and Good", level: 1, school: "Abjuration", classes: ["cleric", "paladin", "wizard"], time: "action", range: "Touch", duration: "Concentration, 10 min", conc: true,
+    attack: "none",
+    description: "Aberrations, Celestials, Elementals, Fey, Fiends and Undead have Disadvantage attacking the target, which also can't be Charmed, Frightened or possessed by them.",
+    procedure: "No roll. It protects only against those creature types." },
+  { name: "Purify Food and Drink", level: 1, school: "Transmutation", classes: ["cleric", "paladin"], time: "action", range: "10 ft", duration: "Instantaneous", ritual: true,
+    attack: "none",
+    description: "Food and drink in a 5-ft Sphere become free of poison and disease.",
+    procedure: "No roll. Action or Ritual." },
+  { name: "Ray of Sickness", level: 1, school: "Necromancy", classes: ["wizard"], time: "action", range: "60 ft", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "2d8", type: "poison" }], upcast: { mode: "dice", expr: "1d8", type: "poison" },
+    description: "Ranged spell attack, 2d8 Poison and Poisoned until the end of your next turn.",
+    procedure: "Make a ranged spell attack. On a hit, apply the damage — the target also has the Poisoned condition until the end of your next turn, no save." },
+  { name: "Sanctuary", level: 1, school: "Abjuration", classes: ["cleric"], time: "bonus", range: "30 ft", duration: "1 min",
+    attack: "none",
+    description: "Anyone targeting the warded creature must make a WIS save or pick a new target and lose the action.",
+    procedure: "No roll to cast. The ward ends if the protected creature attacks, casts a spell on an enemy, or deals damage." },
+  { name: "Searing Smite", level: 1, school: "Evocation", classes: ["paladin"], time: "bonus", range: "Self", duration: "1 min",
+    attack: "none", damage: [{ expr: "1d6", type: "fire" }], upcast: { mode: "dice", expr: "1d6", type: "fire" },
+    description: "Right after a melee hit: +1d6 Fire, and the target burns for 1d6 at the start of each of its turns until it saves.",
+    procedure: "Bonus Action taken immediately after hitting with a Melee weapon or an Unarmed Strike. The target takes the extra Fire damage now, then 1d6 Fire at the start of each of its turns, after which it makes a CON save vs. DC {DC} to end the spell. Upcast raises all of that damage." },
+  { name: "Shield", level: 1, school: "Abjuration", classes: ["wizard"], time: "reaction", range: "Self", duration: "1 round",
+    attack: "none",
+    description: "Reaction when hit or targeted by Magic Missile: +5 AC until your next turn; Magic Missile can't hit you.",
+    procedure: "Announce it when an attack hits you — the +5 AC applies to that attack and may turn the hit into a miss." },
+  { name: "Shield of Faith", level: 1, school: "Abjuration", classes: ["cleric", "paladin"], time: "bonus", range: "60 ft", duration: "Concentration, 10 min", conc: true,
+    attack: "none",
+    description: "A creature gains +2 AC.",
+    procedure: "No roll. Raise the target's AC by 2 while it lasts." },
+  { name: "Silent Image", level: 1, school: "Illusion", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 10 min", conc: true,
+    attack: "none",
+    description: "A purely visual illusion up to a 15-ft Cube, which you can move as a Magic action.",
+    procedure: "No roll to cast. A creature that Studies it makes an Investigation check vs. DC {DC} to see through it. No sound, smell or temperature." },
+  { name: "Sleep", level: 1, school: "Enchantment", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false,
+    description: "Creatures of your choice in a 5-ft-radius Sphere: WIS save or Incapacitated, then Unconscious if they fail a second save.",
+    procedure: "Each chosen creature in the Sphere makes a WIS save vs. DC {DC}. On a fail it is Incapacitated until the end of its next turn, then repeats the save — a second failure means Unconscious for the duration. Damage, or an ally spending an action to shake it, ends it. Creatures that don't sleep or are immune to Exhaustion succeed automatically." },
+  { name: "Tasha's Hideous Laughter", level: 1, school: "Enchantment", classes: ["wizard"], time: "action", range: "30 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false, count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "WIS save or Prone and Incapacitated, laughing helplessly.",
+    procedure: "WIS save vs. DC {DC}. It repeats the save at the end of each of its turns and whenever it takes damage — with Advantage when damage triggered it." },
+  { name: "Thunderous Smite", level: 1, school: "Evocation", classes: ["paladin"], time: "bonus", range: "Self", duration: "Instantaneous",
+    attack: "none", damage: [{ expr: "2d6", type: "thunder" }], upcast: { mode: "dice", expr: "1d6", type: "thunder" },
+    description: "Right after a melee hit: +2d6 Thunder, and a STR save or the target is pushed 10 ft and knocked Prone.",
+    procedure: "Bonus Action right after hitting. Apply the extra damage, then the target makes a STR save vs. DC {DC} or is pushed 10 ft away and falls Prone." },
+  { name: "Thunderwave", level: 1, school: "Evocation", classes: ["wizard"], time: "action", range: "Self (15-ft Cube)", duration: "Instantaneous",
+    attack: "save", saveAbility: "con", saveHalf: true, damage: [{ expr: "2d8", type: "thunder" }], upcast: { mode: "dice", expr: "1d8", type: "thunder" },
+    description: "15-ft Cube: CON save, 2d8 Thunder and pushed 10 ft, half damage and no push on a success.",
+    procedure: "Everyone in the Cube makes a CON save vs. DC {DC}. Fail: full damage and pushed 10 ft away from you. Success: half damage, no push." },
+  { name: "Unseen Servant", level: 1, school: "Conjuration", classes: ["wizard"], time: "action", range: "60 ft", duration: "1 hour", ritual: true,
+    attack: "none",
+    description: "An invisible force (AC 10, 1 HP, Strength 2) does simple tasks on your command.",
+    procedure: "No roll. Bonus Action to command it; it can't attack." },
+  { name: "Witch Bolt", level: 1, school: "Evocation", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "attack", damage: [{ expr: "2d12", type: "lightning" }], upcast: { mode: "dice", expr: "1d12", type: "lightning" },
+    description: "Ranged spell attack, 2d12 Lightning, then 1d12 each later turn as a Bonus Action.",
+    procedure: "Make a ranged spell attack. On a hit, apply the damage; on each later turn you can use a Bonus Action to deal 1d12 Lightning automatically, as long as the target stays within range and in sight." },
+  { name: "Wrathful Smite", level: 1, school: "Necromancy", classes: ["paladin"], time: "bonus", range: "Self", duration: "1 min",
+    attack: "none", damage: [{ expr: "1d6", type: "necrotic" }], upcast: { mode: "dice", expr: "1d6", type: "necrotic" },
+    description: "Right after a melee hit: +1d6 Necrotic, and a WIS save or the target is Frightened of you.",
+    procedure: "Bonus Action taken immediately after hitting with a Melee weapon or an Unarmed Strike. The target makes a WIS save vs. DC {DC} or is Frightened of you; it repeats the save at the end of each of its turns." },
+  { name: "Fog Cloud", level: 1, school: "Conjuration", classes: ["wizard"], time: "action", range: "120 ft", duration: "Concentration, 1 hour", conc: true,
+    attack: "none",
+    description: "A 20-ft-radius Sphere of fog, Heavily Obscured. +20 ft radius per slot level above 1.",
+    procedure: "No roll. Strong wind (such as Gust of Wind) disperses it." },
+  { name: "Grease", level: 1, school: "Conjuration", classes: ["wizard"], time: "action", range: "60 ft", duration: "1 min",
+    attack: "save", saveAbility: "dex", saveHalf: false,
+    description: "A 10-ft square of Difficult Terrain; DEX save or fall Prone, on entering and at the end of a turn there too.",
+    procedure: "Creatures caught in the area when it appears make a DEX save vs. DC {DC} or fall Prone — and so does anything that enters it or ends its turn in it." },
+  { name: "Healing Word", level: 1, school: "Abjuration", classes: ["cleric"], time: "bonus", range: "60 ft", duration: "Instantaneous",
+    attack: "none", damage: [{ expr: "2d4+MOD", type: "healing" }], upcast: { mode: "dice", expr: "2d4", type: "healing" },
+    description: "Bonus Action at 60 ft: heal 2d4 + your spellcasting modifier. +2d4 per slot level above 1.",
+    procedure: "No roll to hit — pick a creature you can see and roll the healing." },
+  { name: "Ice Knife", level: 1, school: "Conjuration", classes: ["wizard"], time: "action", range: "60 ft", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "1d10", type: "piercing" }, { expr: "2d6", type: "cold" }], upcast: { mode: "dice", expr: "1d6", type: "cold" },
+    description: "Ranged spell attack for 1d10 Piercing, then it explodes: DEX save or 2d6 Cold to the target and everyone within 5 ft.",
+    procedure: "Make a ranged spell attack — the 1d10 Piercing only lands on a hit. The shard explodes either way: the target and each creature within 5 ft make a DEX save vs. DC {DC} or take the Cold damage." },
+  { name: "Identify", level: 1, school: "Divination", classes: ["wizard"], time: "none", range: "Touch", duration: "Instantaneous", ritual: true,
+    attack: "none",
+    description: "Learn a magic item's properties, Attunement and charges, or which spells affect a creature. 1 minute or Ritual.",
+    procedure: "No roll. Needs a pearl worth 100+ GP, which isn't consumed." },
+  { name: "Mage Armor", level: 1, school: "Abjuration", classes: ["wizard"], time: "action", range: "Touch", duration: "8 hours",
+    attack: "none",
+    description: "An unarmored creature's base AC becomes 13 + its Dexterity modifier.",
+    procedure: "No roll. Ends early if the target dons armor — set the new AC in Edit → Character while it lasts." },
+  { name: "Tenser's Floating Disk", level: 1, school: "Conjuration", classes: ["wizard"], time: "action", range: "30 ft", duration: "1 hour", ritual: true,
+    attack: "none",
+    description: "A 3-ft disk of force that carries 500 lb and follows you within 20 ft.",
+    procedure: "No roll. It can't cross an elevation change of 10 ft or more; overloading it ends the spell." },
+
+  /* ================= LEVEL 2 ================= */
+  { name: "Aid", level: 2, school: "Abjuration", classes: ["cleric", "paladin"], time: "action", range: "30 ft", duration: "8 hours",
+    attack: "none", count: 3, countLabel: "creatures",
+    description: "Up to three creatures: +5 to Hit Point maximum and current Hit Points. +5 more per slot level above 2.",
+    procedure: "No roll. This raises the maximum too, so it isn't lost to a full heal — set it back after 8 hours." },
+  { name: "Alter Self", level: 2, school: "Transmutation", classes: ["wizard"], time: "action", range: "Self", duration: "Concentration, 1 hour", conc: true,
+    attack: "none",
+    description: "Aquatic Adaptation, Change Appearance, or Natural Weapons (1d6 + spellcasting modifier, counts as magical).",
+    procedure: "No roll to cast. Magic action on later turns to switch between the three options." },
+  { name: "Arcane Lock", level: 2, school: "Abjuration", classes: ["wizard"], time: "action", range: "Touch", duration: "Until dispelled",
+    attack: "none",
+    description: "Magically lock a door, window, gate, container or hatch. Costs 25+ GP of gold dust.",
+    procedure: "No roll. You and creatures you name can still open it; a password you set unlocks it for 1 minute." },
+  { name: "Arcane Vigor", level: 2, school: "Abjuration", classes: ["wizard"], time: "bonus", range: "Self", duration: "Instantaneous",
+    attack: "none",
+    description: "Bonus Action: spend one or two Hit Point Dice and heal their total + your spellcasting modifier.",
+    procedure: "Roll one or two unexpended Hit Point Dice (they are spent) and regain the total + {MOD}. One extra die per slot level above 2." },
+  { name: "Augury", level: 2, school: "Divination", classes: ["cleric", "wizard"], time: "none", range: "Self", duration: "Instantaneous", ritual: true,
+    attack: "none",
+    description: "An omen — Weal, Woe, both, or Indifference — about a plan for the next 30 minutes. 1 minute or Ritual.",
+    procedure: "No roll; the DM picks the omen. Needs divinatory tokens worth 25+ GP." },
+  { name: "Blindness/Deafness", level: 2, school: "Transmutation", classes: ["cleric", "wizard"], time: "action", range: "120 ft", duration: "1 min",
+    attack: "save", saveAbility: "con", saveHalf: false, count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "CON save or Blinded or Deafened (your choice) for 1 minute.",
+    procedure: "CON save vs. DC {DC}. The target repeats the save at the end of each of its turns." },
+  { name: "Blur", level: 2, school: "Illusion", classes: ["wizard"], time: "action", range: "Self", duration: "Concentration, 1 min", conc: true,
+    attack: "none",
+    description: "Attack rolls against you have Disadvantage.",
+    procedure: "No roll. Attackers with Blindsight or Truesight ignore it." },
+  { name: "Calm Emotions", level: 2, school: "Enchantment", classes: ["cleric"], time: "action", range: "60 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "cha", saveHalf: false,
+    description: "Humanoids in a 20-ft-radius Sphere: CHA save or become immune to Charmed/Frightened, or Indifferent toward chosen enemies.",
+    procedure: "Each Humanoid in the Sphere makes a CHA save vs. DC {DC}; choose which of the two effects applies to each one that fails." },
+  { name: "Cloud of Daggers", level: 2, school: "Conjuration", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "none", damage: [{ expr: "4d4", type: "slashing" }], upcast: { mode: "dice", expr: "2d4", type: "slashing" },
+    description: "A 5-ft Cube of spinning daggers: 4d4 Slashing, no save, once per turn per creature.",
+    procedure: "No attack roll and no save — anything in the Cube, entering it, or ending its turn there takes the damage (once per turn). Magic action on later turns to teleport the Cube up to 30 ft." },
+  { name: "Continual Flame", level: 2, school: "Evocation", classes: ["cleric", "wizard"], time: "action", range: "Touch", duration: "Until dispelled",
+    attack: "none",
+    description: "A heatless, fuel-less flame: Bright Light 20 ft, Dim Light 20 ft beyond. Consumes 50+ GP of ruby dust.",
+    procedure: "No roll. It can be covered but not smothered or quenched." },
+  { name: "Crown of Madness", level: 2, school: "Enchantment", classes: ["wizard"], time: "action", range: "120 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false,
+    description: "One Humanoid: WIS save or Charmed and forced to attack a creature you choose each turn.",
+    procedure: "WIS save vs. DC {DC}; non-Humanoids succeed automatically. Each of its turns it must use its action to make a melee attack against the creature you pick. It repeats the save at the end of each of its turns." },
+  { name: "Darkness", level: 2, school: "Evocation", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 10 min", conc: true,
+    attack: "none",
+    description: "A 15-ft-radius Sphere of magical Darkness that Darkvision can't see through.",
+    procedure: "No roll. Cast on an object instead for a 15-ft Emanation you can cover up to block." },
+  { name: "Detect Thoughts", level: 2, school: "Divination", classes: ["wizard"], time: "action", range: "Self", duration: "Concentration, 1 min", conc: true,
+    attack: "none",
+    description: "Sense thinking creatures within 30 ft, or read a creature's surface thoughts (WIS save to resist deeper probing).",
+    procedure: "Magic action on later turns to switch effects. Probing deeper lets the target make a WIS save vs. DC {DC}, ending the spell on a success." },
+  { name: "Dragon's Breath", level: 2, school: "Transmutation", classes: ["wizard"], time: "bonus", range: "Touch", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "dex", saveHalf: true, damage: [{ expr: "3d6", type: "fire" }], upcast: { mode: "dice", expr: "1d6", type: "fire" },
+    description: "A willing creature can exhale a 15-ft Cone as a Magic action: DEX save, 3d6 of a chosen type, half on a success.",
+    procedure: "Choose Acid, Cold, Fire, Lightning or Poison (change it on the damage row). The target, not you, breathes — a Magic action each time, for the duration." },
+  { name: "Enhance Ability", level: 2, school: "Transmutation", classes: ["cleric", "wizard"], time: "action", range: "Touch", duration: "Concentration, 1 hour", conc: true,
+    attack: "none", count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "Advantage on ability checks with one chosen ability.",
+    procedure: "No roll. Upcast targets one more creature per slot level above 2, each with its own chosen ability." },
+  { name: "Enlarge/Reduce", level: 2, school: "Transmutation", classes: ["wizard"], time: "action", range: "30 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "con", saveHalf: false,
+    description: "Enlarge: size up, Advantage on STR checks and saves, +1d4 weapon damage. Reduce: the reverse.",
+    procedure: "A willing target needs no save; an unwilling one makes a CON save vs. DC {DC} to avoid it entirely." },
+  { name: "Find Steed", level: 2, school: "Conjuration", classes: ["paladin"], time: "action", range: "30 ft", duration: "Instantaneous",
+    attack: "none",
+    description: "Summon an Otherworldly Steed (Celestial, Fey or Fiend) that serves as a Large mount.",
+    procedure: "No roll. See the Otherworldly Steed stat block; casting it again replaces the old steed." },
+  { name: "Find Traps", level: 2, school: "Divination", classes: ["cleric"], time: "action", range: "120 ft", duration: "Instantaneous",
+    attack: "none",
+    description: "Sense whether any trap is within range and in line of sight — not where it is.",
+    procedure: "No roll. You learn the general nature of the danger, not the location." },
+  { name: "Flaming Sphere", level: 2, school: "Conjuration", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "dex", saveHalf: true, damage: [{ expr: "2d6", type: "fire" }], upcast: { mode: "dice", expr: "1d6", type: "fire" },
+    description: "A rolling 5-ft sphere of fire: DEX save for 2d6 Fire, half on a success, to anyone ending their turn within 5 ft.",
+    procedure: "Bonus Action to roll it up to 30 ft. Rolling it into a creature's space forces the save immediately and stops the sphere for the turn." },
+  { name: "Gentle Repose", level: 2, school: "Necromancy", classes: ["cleric", "paladin", "wizard"], time: "action", range: "Touch", duration: "10 days", ritual: true,
+    attack: "none",
+    description: "A corpse is protected from decay and can't become Undead.",
+    procedure: "No roll. Days under this spell don't count against the time limit of Raise Dead and similar spells." },
+  { name: "Gust of Wind", level: 2, school: "Evocation", classes: ["wizard"], time: "action", range: "Self (60-ft Line)", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "str", saveHalf: false,
+    description: "A 60-ft × 10-ft Line of wind: STR save or pushed 15 ft; moving toward you costs double.",
+    procedure: "Each creature in the Line makes a STR save vs. DC {DC}, and again if it ends its turn in the Line." },
+  { name: "Hold Person", level: 2, school: "Enchantment", classes: ["cleric", "wizard"], time: "action", range: "60 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false, count: 1, countLabel: "Humanoids", upcast: { mode: "count" },
+    description: "One Humanoid: WIS save or Paralyzed.",
+    procedure: "WIS save vs. DC {DC}, repeated at the end of each of its turns. Paralyzed means melee hits against it within 5 ft are automatic critical hits." },
+  { name: "Invisibility", level: 2, school: "Illusion", classes: ["wizard"], time: "action", range: "Touch", duration: "Concentration, 1 hour", conc: true,
+    attack: "none", count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "A creature becomes Invisible until it attacks, deals damage or casts a spell.",
+    procedure: "No roll. It ends immediately after the target makes an attack roll, deals damage, or casts a spell." },
+  { name: "Knock", level: 2, school: "Transmutation", classes: ["wizard"], time: "action", range: "60 ft", duration: "Instantaneous",
+    attack: "none",
+    description: "Unlock, unstick or unbar one object; suppresses Arcane Lock for 10 minutes. Loud.",
+    procedure: "No roll. A knock audible up to 300 ft away announces it." },
+  { name: "Lesser Restoration", level: 2, school: "Abjuration", classes: ["cleric", "paladin"], time: "bonus", range: "Touch", duration: "Instantaneous",
+    attack: "none",
+    description: "End one condition: Blinded, Deafened, Paralyzed or Poisoned.",
+    procedure: "Bonus Action, no roll." },
+  { name: "Levitate", level: 2, school: "Transmutation", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 10 min", conc: true,
+    attack: "save", saveAbility: "con", saveHalf: false,
+    description: "A creature or loose object (up to 500 lb) rises 20 ft and hangs there.",
+    procedure: "A willing target needs no save; an unwilling one makes a CON save vs. DC {DC} to be unaffected. You can change its altitude by 20 ft on your turns." },
+  { name: "Locate Object", level: 2, school: "Divination", classes: ["cleric", "paladin", "wizard"], time: "action", range: "Self", duration: "Concentration, 10 min", conc: true,
+    attack: "none",
+    description: "Sense the direction to a familiar object within 1,000 ft.",
+    procedure: "No roll. You must have seen the specific object within 30 ft at least once, or you can seek the nearest object of a kind. Any thickness of lead blocks it." },
+  { name: "Magic Mouth", level: 2, school: "Illusion", classes: ["wizard"], time: "none", range: "30 ft", duration: "Until dispelled", ritual: true,
+    attack: "none",
+    description: "Implant a 25-word message in an object, spoken when a trigger you set occurs. 1 minute or Ritual.",
+    procedure: "No roll. Consumes 10+ GP of jade dust." },
+  { name: "Magic Weapon", level: 2, school: "Transmutation", classes: ["paladin", "wizard"], time: "bonus", range: "Touch", duration: "1 hour",
+    attack: "none",
+    description: "A nonmagical weapon becomes magical with +1 to attack and damage. +2 with a level 3-5 slot, +3 with level 6+.",
+    procedure: "No roll. Add the bonus to that weapon's action (To-hit extra and a flat damage row)." },
+  { name: "Melf's Acid Arrow", level: 2, school: "Evocation", classes: ["wizard"], time: "action", range: "90 ft", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "4d4", type: "acid" }], upcast: { mode: "dice", expr: "1d4", type: "acid" },
+    description: "Ranged spell attack, 4d4 Acid plus 2d4 at the end of the target's next turn. Half the initial damage even on a miss.",
+    procedure: "Make a ranged spell attack. On a hit: 4d4 now and 2d4 at the end of its next turn. On a miss: half the initial damage only, and no later damage." },
+  { name: "Mind Spike", level: 2, school: "Divination", classes: ["wizard"], time: "action", range: "120 ft", duration: "Concentration, 1 hour", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: true, damage: [{ expr: "3d8", type: "psychic" }], upcast: { mode: "dice", expr: "1d8", type: "psychic" },
+    description: "WIS save, 3d8 Psychic, half on a success; on a fail you always know where the target is.",
+    procedure: "WIS save vs. DC {DC}. On a fail you track its location while the spell lasts — it can't hide from you and gains no benefit from being Invisible against you." },
+  { name: "Mirror Image", level: 2, school: "Illusion", classes: ["wizard"], time: "action", range: "Self", duration: "1 min",
+    attack: "none",
+    description: "Three duplicates. When you're hit, roll a d6 per remaining duplicate: a 3 or higher means a duplicate is destroyed instead of you being hit.",
+    procedure: "No Concentration. Roll the d6s when an attack hits you. Attackers using Blindsight or Truesight ignore the images." },
+  { name: "Misty Step", level: 2, school: "Conjuration", classes: ["wizard"], time: "bonus", range: "Self", duration: "Instantaneous",
+    attack: "none",
+    description: "Bonus Action: teleport up to 30 ft to an unoccupied space you can see.",
+    procedure: "No roll." },
+  { name: "Nystul's Magic Aura", level: 2, school: "Illusion", classes: ["wizard"], time: "action", range: "Touch", duration: "24 hours",
+    attack: "none",
+    description: "Mask a creature's type, or give an object a false magical aura.",
+    procedure: "No roll. Cast on the same target daily for 30 days and it lasts until dispelled." },
+  { name: "Phantasmal Force", level: 2, school: "Illusion", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "int", saveHalf: false, damage: [{ expr: "2d8", type: "psychic" }],
+    description: "INT save or a 10-ft-Cube illusion only the target perceives; it can deal 2d8 Psychic per turn.",
+    procedure: "INT save vs. DC {DC}. The target can Study the phantasm and beat DC {DC} on an Investigation check to see through it. If the illusion could harm it, it takes 2d8 Psychic at the end of each of its turns." },
+  { name: "Protection from Poison", level: 2, school: "Abjuration", classes: ["cleric", "paladin"], time: "action", range: "Touch", duration: "1 hour",
+    attack: "none",
+    description: "End the Poisoned condition; Advantage against it and Resistance to Poison damage for 1 hour.",
+    procedure: "No roll." },
+  { name: "Ray of Enfeeblement", level: 2, school: "Necromancy", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "con", saveHalf: false,
+    description: "CON save or the target subtracts 1d8 from its damage rolls and has Disadvantage on Strength tests.",
+    procedure: "CON save vs. DC {DC}. Even on a success it has Disadvantage on its next attack roll. It repeats the save at the end of each of its turns." },
+  { name: "Rope Trick", level: 2, school: "Transmutation", classes: ["wizard"], time: "action", range: "Touch", duration: "1 hour",
+    attack: "none",
+    description: "A rope leads to an extradimensional space holding eight Medium creatures.",
+    procedure: "No roll. Nothing can pass in or out except by climbing; everything inside falls out when the spell ends." },
+  { name: "Scorching Ray", level: 2, school: "Evocation", classes: ["wizard"], time: "action", range: "120 ft", duration: "Instantaneous",
+    attack: "attack", damage: [{ expr: "2d6", type: "fire" }], count: 3, countLabel: "rays", upcast: { mode: "count" },
+    description: "Three rays, 2d6 Fire each, split as you like. +1 ray per slot level above 2.",
+    procedure: "Make a separate ranged spell attack for each ray. Apply 2d6 Fire per hit." },
+  { name: "See Invisibility", level: 2, school: "Divination", classes: ["wizard"], time: "action", range: "Self", duration: "1 hour",
+    attack: "none",
+    description: "See Invisible creatures and objects, and into the Ethereal Plane.",
+    procedure: "No roll. Ethereal creatures appear ghostly." },
+  { name: "Shatter", level: 2, school: "Evocation", classes: ["wizard"], time: "action", range: "60 ft", duration: "Instantaneous",
+    attack: "save", saveAbility: "con", saveHalf: true, damage: [{ expr: "3d8", type: "thunder" }], upcast: { mode: "dice", expr: "1d8", type: "thunder" },
+    description: "10-ft-radius Sphere: CON save, 3d8 Thunder, half on a success. Constructs have Disadvantage.",
+    procedure: "Everyone in the Sphere makes a CON save vs. DC {DC}. Unattended nonmagical objects in the area take the damage too." },
+  { name: "Shining Smite", level: 2, school: "Transmutation", classes: ["paladin"], time: "bonus", range: "Self", duration: "Concentration, 1 min", conc: true,
+    attack: "none", damage: [{ expr: "2d6", type: "radiant" }], upcast: { mode: "dice", expr: "1d6", type: "radiant" },
+    description: "Right after a melee hit: +2d6 Radiant, and the target glows — attacks against it have Advantage.",
+    procedure: "Bonus Action right after hitting. For the duration the target sheds Bright Light in a 5-ft radius, attack rolls against it have Advantage, and it gains no benefit from being Invisible." },
+  { name: "Silence", level: 2, school: "Illusion", classes: ["cleric"], time: "action", range: "120 ft", duration: "Concentration, 10 min", conc: true, ritual: true,
+    attack: "none",
+    description: "A 20-ft-radius Sphere of silence: Deafened inside, Immunity to Thunder damage, no Verbal components.",
+    procedure: "No roll. Action or Ritual." },
+  { name: "Spider Climb", level: 2, school: "Transmutation", classes: ["wizard"], time: "action", range: "Touch", duration: "Concentration, 1 hour", conc: true,
+    attack: "none", count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "Walk on walls and ceilings hands-free, with a Climb Speed equal to your Speed.",
+    procedure: "No roll." },
+  { name: "Spiritual Weapon", level: 2, school: "Evocation", classes: ["cleric"], time: "bonus", range: "60 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "attack", damage: [{ expr: "1d8+MOD", type: "force" }], upcast: { mode: "dice", expr: "1d8", type: "force" },
+    description: "A spectral weapon: melee spell attack for 1d8 + your spellcasting modifier Force, and a Bonus Action attack each later turn.",
+    procedure: "Make a melee spell attack when you conjure it. On later turns, a Bonus Action moves it up to 20 ft and attacks again. Upcast: +1d8 per two slot levels above 2." },
+  { name: "Suggestion", level: 2, school: "Enchantment", classes: ["wizard"], time: "action", range: "30 ft", duration: "Concentration, 8 hours", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false,
+    description: "WIS save or the target is Charmed and pursues a reasonable course of action you describe in 25 words or fewer.",
+    procedure: "WIS save vs. DC {DC}. It ends if you or your allies damage the target, or when the suggested activity is done." },
+  { name: "Warding Bond", level: 2, school: "Abjuration", classes: ["cleric", "paladin"], time: "action", range: "Touch", duration: "1 hour",
+    attack: "none",
+    description: "A bonded ally gains +1 AC and saves and Resistance to all damage — but you take the same damage it takes.",
+    procedure: "No roll. Needs two platinum rings worth 50+ GP each, worn by both of you. It ends if you drop to 0 HP or separate by more than 60 ft." },
+  { name: "Web", level: 2, school: "Conjuration", classes: ["wizard"], time: "action", range: "60 ft", duration: "Concentration, 1 hour", conc: true,
+    attack: "save", saveAbility: "dex", saveHalf: false,
+    description: "A 20-ft Cube of webs: Difficult Terrain and Lightly Obscured; DEX save or Restrained.",
+    procedure: "A creature entering the webs or starting its turn there makes a DEX save vs. DC {DC} or is Restrained; a Restrained creature escapes with a STR (Athletics) check vs. DC {DC}. Fire burns a 5-ft cube of web away in 1 round, dealing 2d4 Fire to anything starting its turn there. The webs need anchoring, or they collapse." },
+  { name: "Zone of Truth", level: 2, school: "Enchantment", classes: ["cleric", "paladin"], time: "action", range: "60 ft", duration: "10 min",
+    attack: "save", saveAbility: "cha", saveHalf: false,
+    description: "A 15-ft-radius Sphere: CHA save or the creature can't speak a deliberate lie inside it.",
+    procedure: "CHA save vs. DC {DC} on entering or starting a turn there — you know who passed and who failed. Affected creatures can still be evasive." },
+
+  /* ================= LEVEL 3 ================= */
+  { name: "Animate Dead", level: 3, school: "Necromancy", classes: ["cleric", "wizard"], time: "none", range: "10 ft", duration: "Instantaneous",
+    attack: "none",
+    description: "Raise a Skeleton or Zombie from bones or a corpse. Casting time 1 minute.",
+    procedure: "No roll. Bonus Action to command your undead within 60 ft. Recast within 24 hours to keep control, or it turns on you." },
+  { name: "Aura of Vitality", level: 3, school: "Abjuration", classes: ["cleric", "paladin"], time: "action", range: "Self (30-ft Emanation)", duration: "Concentration, 1 min", conc: true,
+    attack: "none", damage: [{ expr: "2d6", type: "healing" }],
+    description: "A 30-ft aura: heal one creature in it for 2d6 when you cast it and at the start of each of your turns.",
+    procedure: "No roll. Pick one creature in the aura each time and roll the healing — that's up to ten castings' worth over a minute." },
+  { name: "Beacon of Hope", level: 3, school: "Abjuration", classes: ["cleric"], time: "action", range: "30 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "none",
+    description: "Any number of creatures gain Advantage on WIS saves and Death Saves, and receive maximum Hit Points from healing.",
+    procedure: "No roll. Healing dice rolled on these targets are treated as maximum — combine it with Mass Healing Word or Cure Wounds." },
+  { name: "Bestow Curse", level: 3, school: "Necromancy", classes: ["cleric", "wizard"], time: "action", range: "Touch", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false, damage: [{ expr: "1d8", type: "necrotic" }],
+    description: "WIS save or cursed: Disadvantage on one ability, or against you, or wasted turns, or +1d8 Necrotic from your attacks and spells.",
+    procedure: "WIS save vs. DC {DC}. Choose one curse: Disadvantage on checks and saves with one ability; Disadvantage on attacks against you; a WIS save each turn or it does nothing; or your attacks and spells deal an extra 1d8 Necrotic to it." },
+  { name: "Blinding Smite", level: 3, school: "Evocation", classes: ["paladin"], time: "bonus", range: "Self", duration: "1 min",
+    attack: "none", damage: [{ expr: "3d8", type: "radiant" }], upcast: { mode: "dice", expr: "1d8", type: "radiant" },
+    description: "Right after a melee hit: +3d8 Radiant and the target is Blinded.",
+    procedure: "Bonus Action right after hitting. The Blinded target makes a CON save vs. DC {DC} at the end of each of its turns to end the spell." },
+  { name: "Blink", level: 3, school: "Transmutation", classes: ["wizard"], time: "action", range: "Self", duration: "1 min",
+    attack: "none",
+    description: "Roll 1d6 at the end of each of your turns; on 4-6 you slip into the Ethereal Plane until your next turn.",
+    procedure: "No Concentration. While Ethereal you can't be touched by anything on this plane — and can't affect it. You return to a space within 10 ft of where you left." },
+  { name: "Clairvoyance", level: 3, school: "Divination", classes: ["cleric", "wizard"], time: "none", range: "1 mile", duration: "Concentration, 10 min", conc: true,
+    attack: "none",
+    description: "An invisible sensor lets you see or hear a familiar or obvious location. Casting time 10 minutes.",
+    procedure: "No roll. Bonus Action to switch between seeing and hearing. Needs a focus worth 100+ GP." },
+  { name: "Counterspell", level: 3, school: "Abjuration", classes: ["wizard"], time: "reaction", range: "60 ft", duration: "Instantaneous",
+    attack: "save", saveAbility: "con", saveHalf: false,
+    description: "Reaction: the caster makes a CON save or the spell fails and its slot isn't spent.",
+    procedure: "Reaction when you see a creature within 60 ft casting with V, S or M components. It makes a CON save vs. DC {DC}; on a fail the spell dissipates and its action is wasted — but the slot isn't expended." },
+  { name: "Create Food and Water", level: 3, school: "Conjuration", classes: ["cleric", "paladin"], time: "action", range: "30 ft", duration: "Instantaneous",
+    attack: "none",
+    description: "45 lb of food and 30 gallons of fresh water.",
+    procedure: "No roll. The food spoils after 24 hours if uneaten." },
+  { name: "Crusader's Mantle", level: 3, school: "Evocation", classes: ["paladin"], time: "action", range: "Self (30-ft Emanation)", duration: "Concentration, 1 min", conc: true,
+    attack: "none",
+    description: "You and your allies in a 30-ft aura deal an extra 1d4 Radiant on weapon and Unarmed Strike hits.",
+    procedure: "No roll. Everyone in the aura adds 1d4 Radiant to each weapon hit — worth adding as an Option on the party's attacks." },
+  { name: "Daylight", level: 3, school: "Evocation", classes: ["cleric", "paladin"], time: "action", range: "60 ft", duration: "1 hour",
+    attack: "none",
+    description: "A 60-ft-radius Sphere of sunlight, Dim Light 60 ft beyond.",
+    procedure: "No roll. Cast on an object instead for a 60-ft Emanation you can cover up to block." },
+  { name: "Dispel Magic", level: 3, school: "Abjuration", classes: ["cleric", "paladin", "wizard"], time: "action", range: "120 ft", duration: "Instantaneous",
+    attack: "none",
+    description: "End spells of level 3 or lower automatically; higher ones need an ability check.",
+    procedure: "For each ongoing spell of level 4+, make an ability check with your spellcasting ability ({MOD} + {PB} if proficient) vs. DC 10 + that spell's level. Upcasting ends spells up to the slot's level automatically." },
+  { name: "Elemental Weapon", level: 3, school: "Transmutation", classes: ["paladin"], time: "action", range: "Touch", duration: "Concentration, 1 hour", conc: true,
+    attack: "none",
+    description: "A nonmagical weapon gains +1 to attack and an extra 1d4 of a chosen type. +2/2d4 with a level 5-6 slot, +3/3d4 with level 7+.",
+    procedure: "Choose Acid, Cold, Fire, Lightning or Thunder. Add the bonus and the extra dice to that weapon's action." },
+  { name: "Fear", level: 3, school: "Illusion", classes: ["wizard"], time: "action", range: "Self (30-ft Cone)", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false,
+    description: "30-ft Cone: WIS save or drop what you're holding and be Frightened.",
+    procedure: "WIS save vs. DC {DC}. A Frightened creature must Dash away from you each turn; it repeats the save when it ends its turn without line of sight to you." },
+  { name: "Feign Death", level: 3, school: "Necromancy", classes: ["cleric", "wizard"], time: "action", range: "Touch", duration: "1 hour", ritual: true,
+    attack: "none",
+    description: "A willing creature appears dead: Blinded, Incapacitated, Speed 0, Resistance to all damage except Psychic.",
+    procedure: "No roll. Action or Ritual." },
+  { name: "Fireball", level: 3, school: "Evocation", classes: ["wizard"], time: "action", range: "150 ft", duration: "Instantaneous",
+    attack: "save", saveAbility: "dex", saveHalf: true, damage: [{ expr: "8d6", type: "fire" }], upcast: { mode: "dice", expr: "1d6", type: "fire" },
+    description: "20-ft-radius Sphere: DEX save, 8d6 Fire, half on a success. +1d6 per slot level above 3.",
+    procedure: "Everyone in the 20-ft Sphere makes a DEX save vs. DC {DC}. Fail = full damage, success = half. Unattended flammable objects catch fire." },
+  { name: "Fly", level: 3, school: "Transmutation", classes: ["wizard"], time: "action", range: "Touch", duration: "Concentration, 10 min", conc: true,
+    attack: "none", count: 1, countLabel: "creatures", upcast: { mode: "count" },
+    description: "A willing creature gains a Fly Speed of 60 ft and can hover.",
+    procedure: "No roll. When the spell ends the target falls, unless it can stop the fall." },
+  { name: "Gaseous Form", level: 3, school: "Transmutation", classes: ["wizard"], time: "action", range: "Touch", duration: "Concentration, 1 hour", conc: true,
+    attack: "none",
+    description: "A willing creature becomes a misty cloud: Fly Speed 10 ft, hovering, squeezes through gaps, Resistance to nonmagical B/P/S.",
+    procedure: "No roll. It can't attack, cast spells, speak or manipulate objects while in this form." },
+  { name: "Glyph of Warding", level: 3, school: "Abjuration", classes: ["cleric", "wizard"], time: "none", range: "Touch", duration: "Until dispelled or triggered",
+    attack: "save", saveAbility: "dex", saveHalf: true, damage: [{ expr: "5d8", type: "acid" }],
+    description: "A trap glyph: Explosive Runes (5d8 of a chosen type in a 20-ft Sphere) or a stored spell. Casting time 1 hour, 200+ GP of diamond dust.",
+    procedure: "Explosive Runes: everyone in the 20-ft Sphere makes a DEX save vs. DC {DC} — choose Acid, Cold, Fire, Lightning or Thunder. +1d8 per slot level above 3. Spell Glyph instead stores a spell of the slot's level or lower." },
+  { name: "Hypnotic Pattern", level: 3, school: "Illusion", classes: ["wizard"], time: "action", range: "120 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false,
+    description: "30-ft Cube: WIS save or Charmed, Incapacitated and Speed 0.",
+    procedure: "Every creature in the Cube that can see the pattern makes a WIS save vs. DC {DC}. Any damage, or an ally spending an action to shake it, ends it for that creature." },
+  { name: "Leomund's Tiny Hut", level: 3, school: "Evocation", classes: ["wizard"], time: "none", range: "Self (10-ft Emanation)", duration: "8 hours", ritual: true,
+    attack: "none",
+    description: "A 10-ft dome only those inside at casting can pass; blocks spells of level 3 or lower. 1 minute or Ritual.",
+    procedure: "No roll. It must fully enclose everyone in its area when cast, or the spell fails." },
+  { name: "Lightning Bolt", level: 3, school: "Evocation", classes: ["wizard"], time: "action", range: "Self (100-ft Line)", duration: "Instantaneous",
+    attack: "save", saveAbility: "dex", saveHalf: true, damage: [{ expr: "8d6", type: "lightning" }], upcast: { mode: "dice", expr: "1d6", type: "lightning" },
+    description: "100-ft × 5-ft Line: DEX save, 8d6 Lightning, half on a success. +1d6 per slot level above 3.",
+    procedure: "Everyone in the Line makes a DEX save vs. DC {DC}. Fail = full damage, success = half." },
+  { name: "Magic Circle", level: 3, school: "Abjuration", classes: ["cleric", "paladin", "wizard"], time: "none", range: "10 ft", duration: "1 hour",
+    attack: "none",
+    description: "A 10-ft-radius, 20-ft-tall Cylinder that Celestials, Elementals, Fey, Fiends or Undead can't cross. Casting time 1 minute, 100+ GP of silver.",
+    procedure: "No roll. It can be inverted to trap such creatures inside instead. Upcast: +1 hour per slot level above 3." },
+  { name: "Major Image", level: 3, school: "Illusion", classes: ["wizard"], time: "action", range: "120 ft", duration: "Concentration, 10 min", conc: true,
+    attack: "none",
+    description: "A 20-ft-Cube illusion with sound, smell and temperature — but it can't deal damage.",
+    procedure: "No roll to cast. A creature that Studies it makes an Investigation check vs. DC {DC} to see through it. Magic action to move it." },
+  { name: "Mass Healing Word", level: 3, school: "Abjuration", classes: ["cleric"], time: "bonus", range: "60 ft", duration: "Instantaneous",
+    attack: "none", damage: [{ expr: "2d4+MOD", type: "healing" }], count: 6, countLabel: "creatures", upcast: { mode: "dice", expr: "1d4", type: "healing" },
+    description: "Bonus Action: up to six creatures each regain 2d4 + your spellcasting modifier. +1d4 per slot level above 3.",
+    procedure: "No roll. Roll the healing once and apply it to each of the six targets." },
+  { name: "Meld into Stone", level: 3, school: "Transmutation", classes: ["cleric"], time: "action", range: "Touch", duration: "8 hours", ritual: true,
+    attack: "none",
+    description: "Merge into stone with your equipment, undetectable by nonmagical senses.",
+    procedure: "No roll. Action or Ritual. You can't see out, and Perception checks to hear have Disadvantage." },
+  { name: "Nondetection", level: 3, school: "Abjuration", classes: ["wizard"], time: "action", range: "Touch", duration: "8 hours",
+    attack: "none",
+    description: "Hide a creature, place or object (up to 10 ft) from Divination spells and scrying sensors.",
+    procedure: "No roll. Consumes 25+ GP of diamond dust." },
+  { name: "Phantom Steed", level: 3, school: "Illusion", classes: ["wizard"], time: "none", range: "30 ft", duration: "1 hour", ritual: true,
+    attack: "none",
+    description: "A quasi-real horse with Speed 100 ft, 13 miles per hour. 1 minute or Ritual.",
+    procedure: "No roll. Uses the Riding Horse stat block with the higher Speed; its tack vanishes 10 ft away from it." },
+  { name: "Protection from Energy", level: 3, school: "Abjuration", classes: ["cleric", "wizard"], time: "action", range: "Touch", duration: "Concentration, 1 hour", conc: true,
+    attack: "none",
+    description: "Resistance to one of Acid, Cold, Fire, Lightning or Thunder.",
+    procedure: "No roll — choose the damage type when you cast it." },
+  { name: "Remove Curse", level: 3, school: "Abjuration", classes: ["cleric", "paladin", "wizard"], time: "action", range: "Touch", duration: "Instantaneous",
+    attack: "none",
+    description: "End all curses on one creature or object.",
+    procedure: "No roll. A cursed magic item keeps its curse, but Attunement breaks so it can be discarded." },
+  { name: "Revivify", level: 3, school: "Necromancy", classes: ["cleric", "paladin"], time: "action", range: "Touch", duration: "Instantaneous",
+    attack: "none",
+    description: "A creature dead for less than a minute returns with 1 Hit Point. Consumes a 300+ GP diamond.",
+    procedure: "No roll. It can't revive death from old age or restore missing body parts." },
+  { name: "Sending", level: 3, school: "Divination", classes: ["cleric", "wizard"], time: "action", range: "Unlimited", duration: "Instantaneous",
+    attack: "none",
+    description: "A 25-word message to a creature you've met, anywhere; it can reply at once.",
+    procedure: "No roll. Across planes there's a 5 percent chance it doesn't arrive — you know either way." },
+  { name: "Sleet Storm", level: 3, school: "Conjuration", classes: ["wizard"], time: "action", range: "150 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "dex", saveHalf: false,
+    description: "A 20-ft-radius, 40-ft-tall Cylinder: Heavily Obscured, Difficult Terrain, DEX save or Prone and lose Concentration.",
+    procedure: "A creature entering the Cylinder or starting its turn there makes a DEX save vs. DC {DC}. No damage." },
+  { name: "Slow", level: 3, school: "Transmutation", classes: ["wizard"], time: "action", range: "120 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: false, count: 6, countLabel: "creatures",
+    description: "Up to six creatures in a 40-ft Cube: WIS save or halved Speed, −2 AC and DEX saves, no Reactions, one action or Bonus Action per turn.",
+    procedure: "Each target makes a WIS save vs. DC {DC}, repeated at the end of each of its turns. An affected creature attacks only once with the Attack action, and a Somatic spell it casts fails 25 percent of the time." },
+  { name: "Speak with Dead", level: 3, school: "Necromancy", classes: ["cleric", "wizard"], time: "action", range: "10 ft", duration: "10 min",
+    attack: "none",
+    description: "Ask a corpse five questions; it answers with what it knew in life.",
+    procedure: "No roll. The corpse needs a mouth, can't have been Undead, and can't have been targeted by this spell in the last 10 days." },
+  { name: "Spirit Guardians", level: 3, school: "Conjuration", classes: ["cleric"], time: "action", range: "Self (15-ft Emanation)", duration: "Concentration, 10 min", conc: true,
+    attack: "save", saveAbility: "wis", saveHalf: true, damage: [{ expr: "3d8", type: "radiant" }], upcast: { mode: "dice", expr: "1d8", type: "radiant" },
+    description: "A 15-ft aura halves enemy Speed: WIS save, 3d8 Radiant (or Necrotic if you're evil), half on a success. +1d8 per slot level above 3.",
+    procedure: "Name the creatures it won't affect when you cast it. Everyone else saves when the aura reaches them, when they enter it, or when they end a turn in it — once per turn each." },
+  { name: "Stinking Cloud", level: 3, school: "Conjuration", classes: ["wizard"], time: "action", range: "90 ft", duration: "Concentration, 1 min", conc: true,
+    attack: "save", saveAbility: "con", saveHalf: false,
+    description: "A 20-ft-radius Sphere, Heavily Obscured: CON save or Poisoned and unable to take an action or Bonus Action that turn.",
+    procedure: "A creature that starts its turn in the Sphere makes a CON save vs. DC {DC}. Strong wind disperses the cloud." },
+  { name: "Summon Fey", level: 3, school: "Conjuration", classes: ["wizard"], time: "action", range: "90 ft", duration: "Concentration, 1 hour", conc: true,
+    attack: "none",
+    description: "A Fey Spirit ally (Fuming, Mirthful or Tricksy) that acts on your turn. Needs a 300+ GP gilded flower.",
+    procedure: "No roll. It uses the Fey Spirit stat block and obeys your commands; it acts right after your turn." },
+  { name: "Summon Undead", level: 3, school: "Necromancy", classes: ["wizard"], time: "action", range: "90 ft", duration: "Concentration, 1 hour", conc: true,
+    attack: "none",
+    description: "An Undead Spirit ally (Ghostly, Putrid or Skeletal). Needs a 300+ GP gilded skull.",
+    procedure: "No roll. It uses the Undead Spirit stat block and obeys your commands." },
+  { name: "Tongues", level: 3, school: "Divination", classes: ["cleric", "wizard"], time: "action", range: "Touch", duration: "1 hour",
+    attack: "none",
+    description: "Understand any spoken or signed language, and be understood by anyone who knows a language.",
+    procedure: "No roll." },
+  { name: "Vampiric Touch", level: 3, school: "Necromancy", classes: ["wizard"], time: "action", range: "Self", duration: "Concentration, 1 min", conc: true,
+    attack: "attack", damage: [{ expr: "3d6", type: "necrotic" }], upcast: { mode: "dice", expr: "1d6", type: "necrotic" },
+    description: "Melee spell attack, 3d6 Necrotic, and you heal half the damage dealt. Repeatable each turn as a Magic action.",
+    procedure: "Make a melee spell attack. On a hit, apply the damage and regain half of it (round down). On later turns, a Magic action attacks again." },
+  { name: "Water Breathing", level: 3, school: "Transmutation", classes: ["wizard"], time: "action", range: "30 ft", duration: "24 hours", ritual: true,
+    attack: "none", count: 10, countLabel: "creatures",
+    description: "Up to ten creatures can breathe underwater for 24 hours.",
+    procedure: "No roll. Action or Ritual. They keep their normal breathing too." },
+  { name: "Water Walk", level: 3, school: "Transmutation", classes: ["cleric"], time: "action", range: "30 ft", duration: "1 hour", ritual: true,
+    attack: "none", count: 10, countLabel: "creatures",
+    description: "Up to ten creatures can walk on any liquid surface.",
+    procedure: "No roll. Action or Ritual. A Bonus Action is needed to submerge or surface." },
+];
+
+// 2024 species (PHB pp. 186-197). Each trait becomes either a Feature action
+// (a reference card / something you do) or an Option (a toggle that changes a roll),
+// the same split the feat library uses. Lineage choices are listed in the trait text
+// rather than modelled — pick the one your character took and delete the rest.
+const SPECIES_LIBRARY = [
+  { name: "Aasimar", size: "Medium or Small", speed: 30, traits: [
+    { name: "Celestial Resistance", as: "feature", time: "none",
+      description: "Resistance to Necrotic and Radiant damage.",
+      procedure: "Halve all Necrotic and Radiant damage you take." },
+    { name: "Darkvision (60 ft)", as: "feature", time: "none",
+      description: "You see in Dim Light as Bright Light, and in Darkness as Dim Light, out to 60 ft.",
+      procedure: "Darkness is greyscale for you — you can't discern colour in it." },
+    { name: "Healing Hands", as: "feature", time: "action",
+      description: "Magic action: touch a creature and heal PB d4s. Once per Long Rest.",
+      procedure: "Touch a creature and roll {PB}d4 — it regains that many Hit Points. Once per Long Rest.",
+      damage: [{ expr: "PBd4", type: "healing" }] },
+    { name: "Light Bearer", as: "feature", time: "none",
+      description: "You know the Light cantrip; Charisma is your spellcasting ability for it.",
+      procedure: "Add Light as its own action if you want it on the sheet." },
+    { name: "Celestial Revelation (level 3)", as: "option",
+      description: "Bonus Action transformation for 1 minute: Heavenly Wings, Inner Radiance, or Necrotic Shroud. Once per turn it adds PB damage to one target.",
+      applies: { mode: "all", tags: [], actionIds: [] }, requires: "any", defaultOn: false,
+      effects: { dice: [{ expr: "PB", type: "" }], oncePerTurn: true,
+        note: "Only while transformed (Bonus Action, 1 minute, once per Long Rest). Damage type is Radiant (Heavenly Wings / Inner Radiance) or Necrotic (Necrotic Shroud). Necrotic Shroud also forces a CHA save DC {DC-CHA} against Frightened; Inner Radiance deals {PB} Radiant to creatures within 10 ft at the end of each of your turns." } },
+  ] },
+  { name: "Dragonborn", size: "Medium", speed: 30, traits: [
+    { name: "Draconic Ancestry", as: "feature", time: "none",
+      description: "Choose a dragon: Black/Copper (Acid), Blue/Bronze (Lightning), Brass/Gold/Red (Fire), Green (Poison), Silver/White (Cold). It sets your Breath Weapon and Resistance.",
+      procedure: "Set the damage type on your Breath Weapon action to match." },
+    { name: "Breath Weapon", as: "action", time: "action", attack: "save", saveAbility: "dex", saveHalf: true, dcAbility: "con",
+      damage: [{ expr: "1d10", type: "fire" }], damageScale: "cantrip",
+      description: "Replace one attack of the Attack action with a 15-ft Cone or 30-ft Line (5 ft wide). DEX save for half. Scales at levels 5/11/17. PB uses per Long Rest.",
+      procedure: "Replaces one attack of your Attack action. Choose a 15-ft Cone or a 30-ft Line 5 ft wide. Change the damage type to your Draconic Ancestry's. You get {PB} uses per Long Rest." },
+    { name: "Damage Resistance", as: "feature", time: "none",
+      description: "Resistance to the damage type of your Draconic Ancestry.",
+      procedure: "Halve that damage type." },
+    { name: "Darkvision (60 ft)", as: "feature", time: "none",
+      description: "Darkvision out to 60 ft.", procedure: "Dim Light counts as Bright Light, Darkness as Dim Light." },
+    { name: "Draconic Flight (level 5)", as: "feature", time: "bonus",
+      description: "Bonus Action: spectral wings, Fly Speed equal to your Speed for 10 minutes. Once per Long Rest.",
+      procedure: "Ends early if you retract the wings or become Incapacitated." },
+  ] },
+  { name: "Dwarf", size: "Medium", speed: 30, traits: [
+    { name: "Darkvision (120 ft)", as: "feature", time: "none",
+      description: "Darkvision out to 120 ft.", procedure: "Dim Light counts as Bright Light, Darkness as Dim Light." },
+    { name: "Dwarven Resilience", as: "feature", time: "none",
+      description: "Resistance to Poison damage and Advantage on saves against the Poisoned condition.",
+      procedure: "Halve Poison damage; roll saves to avoid or end Poisoned with Advantage." },
+    { name: "Dwarven Toughness", as: "feature", time: "none",
+      description: "Hit Point maximum +1, and +1 again at every level.",
+      procedure: "Add your character level to Max HP in Edit → Character (at level {L}: +{L})." },
+    { name: "Stonecunning", as: "feature", time: "bonus",
+      description: "Bonus Action: Tremorsense 60 ft for 10 minutes while on or touching stone. PB uses per Long Rest.",
+      procedure: "{PB} uses per Long Rest. The stone may be natural or worked." },
+  ] },
+  { name: "Elf", size: "Medium", speed: 30, traits: [
+    { name: "Darkvision (60 ft)", as: "feature", time: "none",
+      description: "Darkvision out to 60 ft (120 ft if your lineage is Drow).",
+      procedure: "Dim Light counts as Bright Light, Darkness as Dim Light." },
+    { name: "Elven Lineage", as: "feature", time: "none",
+      description: "Drow: Darkvision 120 ft + Dancing Lights; 3 Faerie Fire, 5 Darkness. High Elf: Prestidigitation (swappable on a Long Rest); 3 Detect Magic, 5 Misty Step. Wood Elf: Speed 35 + Druidcraft; 3 Longstrider, 5 Pass without Trace.",
+      procedure: "Each lineage spell is free once per Long Rest, or cast it with a slot. INT, WIS, or CHA is the spellcasting ability (your choice)." },
+    { name: "Fey Ancestry", as: "feature", time: "none",
+      description: "Advantage on saves to avoid or end the Charmed condition.",
+      procedure: "Roll those saves with Advantage." },
+    { name: "Keen Senses", as: "feature", time: "none",
+      description: "Proficiency in Insight, Perception, or Survival.",
+      procedure: "Tick the chosen skill in the sheet's skill list." },
+    { name: "Trance", as: "feature", time: "none",
+      description: "You don't sleep and can't be magically put to sleep; a Long Rest takes you 4 hours.",
+      procedure: "You stay conscious during the trance." },
+  ] },
+  { name: "Gnome", size: "Small", speed: 30, traits: [
+    { name: "Darkvision (60 ft)", as: "feature", time: "none",
+      description: "Darkvision out to 60 ft.", procedure: "Dim Light counts as Bright Light, Darkness as Dim Light." },
+    { name: "Gnomish Cunning", as: "feature", time: "none",
+      description: "Advantage on Intelligence, Wisdom, and Charisma saving throws.",
+      procedure: "Roll all INT/WIS/CHA saves with Advantage." },
+    { name: "Gnomish Lineage", as: "feature", time: "none",
+      description: "Forest Gnome: Minor Illusion, plus Speak with Animals free PB times per Long Rest. Rock Gnome: Mending and Prestidigitation, plus clockwork devices.",
+      procedure: "INT, WIS, or CHA is the spellcasting ability (your choice). Rock Gnome: 10 minutes of Prestidigitation makes a Tiny device (AC 5, 1 HP) with one Prestidigitation effect; up to three at a time, each lasting 8 hours." },
+  ] },
+  { name: "Goliath", size: "Medium", speed: 35, traits: [
+    { name: "Giant Ancestry", as: "option",
+      description: "Choose one giant boon, usable PB times per Long Rest. Fire's Burn: +1d10 Fire on a hit. Frost's Chill: +1d6 Cold and −10 ft Speed. Hill's Tumble: knock a Large or smaller target Prone. Cloud's Jaunt, Stone's Endurance and Storm's Thunder are listed in the note.",
+      applies: { mode: "all", tags: [], actionIds: [] }, requires: "attack", defaultOn: false,
+      effects: { dice: [{ expr: "1d10", type: "fire" }],
+        note: "Fire's Burn as set up here (+1d10 Fire). Swap the dice for your own ancestry: Frost's Chill = 1d6 Cold and −10 ft Speed until your next turn; Hill's Tumble = the target falls Prone (Large or smaller), no extra dice. Non-attack boons: Cloud's Jaunt (Bonus Action, teleport 30 ft), Stone's Endurance (Reaction, reduce damage by 1d12 + {CON}), Storm's Thunder (Reaction, 1d8 Thunder to a creature within 60 ft that damaged you). {PB} uses per Long Rest." } },
+    { name: "Large Form (level 5)", as: "feature", time: "bonus",
+      description: "Bonus Action: become Large for 10 minutes — Advantage on Strength checks and Speed +10 ft. Once per Long Rest.",
+      procedure: "You need a big enough space. Ends early when you choose (no action)." },
+    { name: "Powerful Build", as: "feature", time: "none",
+      description: "Advantage on saves to end the Grappled condition; you count as one size larger for carrying capacity.",
+      procedure: "Also applies to pushing, dragging and lifting." },
+  ] },
+  { name: "Halfling", size: "Small", speed: 30, traits: [
+    { name: "Brave", as: "feature", time: "none",
+      description: "Advantage on saves to avoid or end the Frightened condition.",
+      procedure: "Roll those saves with Advantage." },
+    { name: "Halfling Nimbleness", as: "feature", time: "none",
+      description: "Move through the space of any creature one size larger than you.",
+      procedure: "You can't end your movement in their space." },
+    { name: "Luck", as: "feature", time: "none",
+      description: "When you roll a 1 on a d20 test, reroll the die and use the new roll.",
+      procedure: "Applies to attack rolls, ability checks and saving throws alike." },
+    { name: "Naturally Stealthy", as: "feature", time: "none",
+      description: "You can Hide while obscured only by a creature at least one size larger than you.",
+      procedure: "Normally you'd need proper cover or heavy obscurement." },
+  ] },
+  { name: "Human", size: "Medium or Small", speed: 30, traits: [
+    { name: "Resourceful", as: "feature", time: "none",
+      description: "You gain Heroic Inspiration whenever you finish a Long Rest.",
+      procedure: "Heroic Inspiration lets you reroll any d20 once." },
+    { name: "Skillful", as: "feature", time: "none",
+      description: "Proficiency in one skill of your choice.",
+      procedure: "Tick it in the sheet's skill list." },
+    { name: "Versatile", as: "feature", time: "none",
+      description: "You gain an Origin feat of your choice (Skilled is recommended).",
+      procedure: "Add it with the feat quick-pick in Edit → Options." },
+  ] },
+  { name: "Orc", size: "Medium", speed: 30, traits: [
+    { name: "Adrenaline Rush", as: "feature", time: "bonus",
+      description: "Dash as a Bonus Action and gain PB Temporary Hit Points. PB uses per Short or Long Rest.",
+      procedure: "Bonus Action Dash, and gain {PB} Temporary HP. {PB} uses, back on a Short or Long Rest." },
+    { name: "Darkvision (120 ft)", as: "feature", time: "none",
+      description: "Darkvision out to 120 ft.", procedure: "Dim Light counts as Bright Light, Darkness as Dim Light." },
+    { name: "Relentless Endurance", as: "feature", time: "none",
+      description: "When reduced to 0 Hit Points without being killed outright, drop to 1 instead. Once per Long Rest.",
+      procedure: "Set your HP back to 1 on the sheet instead of 0." },
+  ] },
+  { name: "Tiefling", size: "Medium or Small", speed: 30, traits: [
+    { name: "Darkvision (60 ft)", as: "feature", time: "none",
+      description: "Darkvision out to 60 ft.", procedure: "Dim Light counts as Bright Light, Darkness as Dim Light." },
+    { name: "Fiendish Legacy", as: "feature", time: "none",
+      description: "Abyssal: Poison Resistance + Poison Spray; 3 Ray of Sickness, 5 Hold Person. Chthonic: Necrotic Resistance + Chill Touch; 3 False Life, 5 Ray of Enfeeblement. Infernal: Fire Resistance + Fire Bolt; 3 Hellish Rebuke, 5 Darkness.",
+      procedure: "Each legacy spell is free once per Long Rest, or cast it with a slot. INT, WIS, or CHA is the spellcasting ability (your choice)." },
+    { name: "Otherworldly Presence", as: "feature", time: "none",
+      description: "You know the Thaumaturgy cantrip, cast with your Fiendish Legacy ability.",
+      procedure: "Add Thaumaturgy as its own action if you want it on the sheet." },
+  ] },
+];
+
+// 2024 backgrounds (PHB pp. 178-185). Each grants +3 across the listed abilities
+// (either +2/+1 or +1/+1/+1), an Origin feat, two skills, one tool, and gear.
+const BACKGROUND_LIBRARY = [
+  { name: "Acolyte", abilities: ["int", "wis", "cha"], feat: "Magic Initiate", featNote: "Cleric list",
+    skills: ["Insight", "Religion"], tool: "Calligrapher's Supplies",
+    equipment: [["Calligrapher's Supplies", 1], ["Book (prayers)", 1], ["Holy Symbol", 1], ["Parchment", 10], ["Robe", 1]], gp: 8 },
+  { name: "Artisan", abilities: ["str", "dex", "int"], feat: "Crafter",
+    skills: ["Investigation", "Persuasion"], tool: "Artisan's Tools (choose one)",
+    equipment: [["Artisan's Tools", 1], ["Pouch", 2], ["Traveler's Clothes", 1]], gp: 32 },
+  { name: "Charlatan", abilities: ["dex", "con", "cha"], feat: "Skilled",
+    skills: ["Deception", "Sleight of Hand"], tool: "Forgery Kit",
+    equipment: [["Forgery Kit", 1], ["Costume", 1], ["Fine Clothes", 1]], gp: 15 },
+  { name: "Criminal", abilities: ["dex", "con", "int"], feat: "Alert",
+    skills: ["Sleight of Hand", "Stealth"], tool: "Thieves' Tools",
+    equipment: [["Dagger", 2], ["Thieves' Tools", 1], ["Crowbar", 1], ["Pouch", 2], ["Traveler's Clothes", 1]], gp: 16 },
+  { name: "Entertainer", abilities: ["str", "dex", "cha"], feat: "Musician",
+    skills: ["Acrobatics", "Performance"], tool: "Musical Instrument (choose one)",
+    equipment: [["Musical Instrument", 1], ["Costume", 2], ["Mirror", 1], ["Perfume", 1], ["Traveler's Clothes", 1]], gp: 11 },
+  { name: "Farmer", abilities: ["str", "con", "wis"], feat: "Tough",
+    skills: ["Animal Handling", "Nature"], tool: "Carpenter's Tools",
+    equipment: [["Sickle", 1], ["Carpenter's Tools", 1], ["Healer's Kit", 1], ["Iron Pot", 1], ["Shovel", 1], ["Traveler's Clothes", 1]], gp: 30 },
+  { name: "Guard", abilities: ["str", "int", "wis"], feat: "Alert",
+    skills: ["Athletics", "Perception"], tool: "Gaming Set (choose one)",
+    equipment: [["Spear", 1], ["Light Crossbow", 1], ["Bolts", 20], ["Gaming Set", 1], ["Hooded Lantern", 1], ["Manacles", 1], ["Quiver", 1], ["Traveler's Clothes", 1]], gp: 12 },
+  { name: "Guide", abilities: ["dex", "con", "wis"], feat: "Magic Initiate", featNote: "Druid list",
+    skills: ["Stealth", "Survival"], tool: "Cartographer's Tools",
+    equipment: [["Shortbow", 1], ["Arrows", 20], ["Cartographer's Tools", 1], ["Bedroll", 1], ["Quiver", 1], ["Tent", 1], ["Traveler's Clothes", 1]], gp: 3 },
+  { name: "Hermit", abilities: ["con", "wis", "cha"], feat: "Healer",
+    skills: ["Medicine", "Religion"], tool: "Herbalism Kit",
+    equipment: [["Quarterstaff", 1], ["Herbalism Kit", 1], ["Bedroll", 1], ["Book (philosophy)", 1], ["Lamp", 1], ["Oil (flask)", 3], ["Traveler's Clothes", 1]], gp: 16 },
+  { name: "Merchant", abilities: ["con", "int", "cha"], feat: "Lucky",
+    skills: ["Animal Handling", "Persuasion"], tool: "Navigator's Tools",
+    equipment: [["Navigator's Tools", 1], ["Pouch", 2], ["Traveler's Clothes", 1]], gp: 22 },
+  { name: "Noble", abilities: ["str", "int", "cha"], feat: "Skilled",
+    skills: ["History", "Persuasion"], tool: "Gaming Set (choose one)",
+    equipment: [["Gaming Set", 1], ["Fine Clothes", 1], ["Perfume", 1]], gp: 29 },
+  { name: "Sage", abilities: ["con", "int", "wis"], feat: "Magic Initiate", featNote: "Wizard list",
+    skills: ["Arcana", "History"], tool: "Calligrapher's Supplies",
+    equipment: [["Quarterstaff", 1], ["Calligrapher's Supplies", 1], ["Book (history)", 1], ["Parchment", 8], ["Robe", 1]], gp: 8 },
+  { name: "Sailor", abilities: ["str", "dex", "wis"], feat: "Tavern Brawler",
+    skills: ["Acrobatics", "Perception"], tool: "Navigator's Tools",
+    equipment: [["Dagger", 1], ["Navigator's Tools", 1], ["Rope", 1], ["Traveler's Clothes", 1]], gp: 20 },
+  { name: "Scribe", abilities: ["dex", "int", "wis"], feat: "Skilled",
+    skills: ["Investigation", "Perception"], tool: "Calligrapher's Supplies",
+    equipment: [["Calligrapher's Supplies", 1], ["Fine Clothes", 1], ["Lamp", 1], ["Oil (flask)", 3], ["Parchment", 12]], gp: 23 },
+  { name: "Soldier", abilities: ["str", "dex", "con"], feat: "Savage Attacker",
+    skills: ["Athletics", "Intimidation"], tool: "Gaming Set (choose one)",
+    equipment: [["Spear", 1], ["Shortbow", 1], ["Arrows", 20], ["Gaming Set", 1], ["Healer's Kit", 1], ["Quiver", 1], ["Traveler's Clothes", 1]], gp: 14 },
+  { name: "Wayfarer", abilities: ["dex", "wis", "cha"], feat: "Lucky",
+    skills: ["Insight", "Stealth"], tool: "Thieves' Tools",
+    equipment: [["Dagger", 2], ["Thieves' Tools", 1], ["Gaming Set", 1], ["Bedroll", 1], ["Pouch", 2], ["Traveler's Clothes", 1]], gp: 16 },
+];
+
+// 2024 feats (PHB ch. 5, pp. 199-211). Every feat in the book is here.
+// `as` decides where the quick-pick in Edit puts it:
+//   "option"  → an editable Option (a toggle on matching actions; can change dice/rolls)
+//   "feature" → a Feature action with no cost, i.e. a reference card on the sheet
+// Ability Score Increases are left out on purpose — you edit the scores directly.
 const FEAT_LIBRARY = [
-  { name: "Sharpshooter (feat)",
-    description: "Ranged weapon attacks ignore Half and Three-Quarters Cover; no Disadvantage from shooting within 5 ft of an enemy or at long range.",
-    applies: { mode: "tags", tags: ["ranged"], actionIds: [] }, requires: "attack", defaultOn: true,
-    effects: { note: "Ignore Half/Three-Quarters Cover. No Disadvantage for shooting in melee or at long range." } },
-  { name: "Great Weapon Master (feat)",
+  /* ---------- ORIGIN FEATS (PHB p. 200) ---------- */
+  { name: "Alert (feat)", cat: "Origin", as: "feature", time: "none",
+    description: "Add your Proficiency Bonus to Initiative, and you can swap Initiative with a willing ally.",
+    procedure: "Initiative Proficiency: add PB to your Initiative roll. Initiative Swap: right after rolling, trade your Initiative with one willing ally (neither of you may be Incapacitated)." },
+  { name: "Crafter (feat)", cat: "Origin", as: "feature", time: "none",
+    description: "Proficiency with three Artisan's Tools, 20% discount on nonmagical items, and one free piece of gear per Long Rest.",
+    procedure: "Fast Crafting: on a Long Rest, craft one item from the Fast Crafting table using tools you're proficient with. It falls apart after your next Long Rest." },
+  { name: "Healer (feat)", cat: "Origin", as: "feature", time: "action",
+    description: "Battle Medic: spend a use of a Healer's Kit to let a creature spend a Hit Point Die and heal that roll + your PB. Reroll 1s on healing dice.",
+    procedure: "Utilize action, target within 5 ft: expend one use of your Healer's Kit; the target spends one Hit Point Die, you roll it, and it regains the roll + {PB} HP. Any healing die that rolls a 1 may be rerolled once." },
+  { name: "Lucky (feat)", cat: "Origin", as: "option",
+    description: "Spend a Luck Point (you have PB of them, back on a Long Rest) for Advantage on a D20 Test, or to give an attacker Disadvantage against you.",
+    applies: { mode: "all", tags: [], actionIds: [] }, requires: "any", defaultOn: false,
+    effects: { advantage: true, note: "Spend 1 Luck Point (you have {PB} per Long Rest). Can also be spent to impose Disadvantage on an attack against you." } },
+  { name: "Magic Initiate (feat)", cat: "Origin", as: "feature", time: "none",
+    description: "Two cantrips plus one level 1 spell from the Cleric, Druid, or Wizard list; the level 1 spell is free once per Long Rest.",
+    procedure: "Add the cantrips and the level 1 spell as their own actions. The level 1 spell can be cast once per Long Rest without a slot, or normally with a slot. Repeatable — a different list each time." },
+  { name: "Musician (feat)", cat: "Origin", as: "feature", time: "none",
+    description: "Proficiency with three Musical Instruments; on a rest, grant Heroic Inspiration to PB allies.",
+    procedure: "As you finish a Short or Long Rest, play an instrument: up to {PB} allies who hear it gain Heroic Inspiration." },
+  { name: "Savage Attacker (feat)", cat: "Origin", as: "option",
+    description: "Once per turn when you hit with a weapon, roll the weapon's damage dice twice and use either roll.",
+    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Once per turn: roll the weapon's damage dice twice, keep the roll you like." } },
+  { name: "Skilled (feat)", cat: "Origin", as: "feature", time: "none",
+    description: "Proficiency in any combination of three skills or tools. Repeatable.",
+    procedure: "Tick the skills in the character sheet's skill list." },
+  { name: "Tavern Brawler (feat)", cat: "Origin", as: "feature", time: "action",
+    description: "Unarmed Strike deals 1d4 + STR Bludgeoning, rerolls 1s, and can push 5 ft once per turn. Proficient with improvised weapons.",
+    procedure: "Unarmed Strike: attack roll {STR} + {PB}, on a hit 1d4 + {STR} Bludgeoning (reroll a 1 on the die). Once per turn you may also push the target 5 ft as part of the Attack action." },
+  { name: "Tough (feat)", cat: "Origin", as: "feature", time: "none",
+    description: "Your Hit Point maximum increases by twice your character level, and by 2 more per level thereafter.",
+    procedure: "Add 2 × your character level to Max HP in Edit → Character (at level {L}: +{L} twice over)." },
+
+  /* ---------- GENERAL FEATS (PHB pp. 202-209) ---------- */
+  { name: "Ability Score Improvement (feat)", cat: "General", as: "feature", time: "none",
+    description: "Increase one ability score by 2, or two scores by 1 (max 20). Repeatable.",
+    procedure: "Edit the ability scores directly in Edit → Character." },
+  { name: "Actor (feat)", cat: "General", as: "feature", time: "none",
+    description: "Advantage on Deception/Performance checks to pass as a specific person; you can mimic sounds and speech.",
+    procedure: "Mimicry: a listener must succeed on a Wisdom (Insight) check, DC {DC-CHA}, to tell it is faked." },
+  { name: "Athlete (feat)", cat: "General", as: "feature", time: "none",
+    description: "Climb Speed equal to your Speed; stand up from Prone with 5 ft of movement; run-up jumps need only 5 ft.",
+    procedure: "Passive — no roll needed." },
+  { name: "Charger (feat)", cat: "General", as: "option",
+    description: "Move 10 ft in a straight line, then hit with a melee attack as part of the Attack action: +1d8 damage, or push the target 10 ft. Also Dash +10 ft.",
+    applies: { mode: "tags", tags: ["melee"], actionIds: [] }, requires: "attack", defaultOn: false,
+    effects: { dice: [{ expr: "1d8", type: "" }], oncePerTurn: true,
+      note: "Needs 10 ft of straight-line movement toward the target first, during the Attack action. Instead of the 1d8 you may push the target 10 ft (one size larger at most)." } },
+  { name: "Chef (feat)", cat: "General", as: "feature", time: "none",
+    description: "Short Rest food gives +1d8 HP to anyone spending Hit Dice; treats give Temporary Hit Points equal to your PB.",
+    procedure: "Replenishing Meal (Short Rest, 4 + {PB} creatures): each who spends Hit Dice regains an extra 1d8 HP. Bolstering Treats: {PB} treats; eating one as a Bonus Action gives {PB} Temporary HP." },
+  { name: "Crossbow Expert (feat)", cat: "General", as: "option",
+    description: "Ignore the Loading property of crossbows; no Disadvantage for firing a crossbow within 5 ft; the Light-property extra attack with a crossbow adds your ability modifier.",
+    applies: { mode: "tags", tags: ["loading"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Ignore Loading (and you can load without a free hand); no Disadvantage in melee with crossbows." } },
+  { name: "Crusher (feat)", cat: "General", as: "option",
+    description: "Once per turn, a Bludgeoning hit moves the target 5 ft. Bludgeoning crits: attack rolls against the target have Advantage until your next turn.",
+    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Bludgeoning damage only: once per turn move the target 5 ft (one size larger at most). Crit: everyone attacks it with Advantage until the start of your next turn." } },
+  { name: "Defensive Duelist (feat)", cat: "General", as: "feature", time: "reaction",
+    description: "Reaction while holding a Finesse weapon: add your PB to AC against a melee attack that hits you.",
+    procedure: "When a melee attack hits you: Reaction, add {PB} to your AC against melee attacks until the start of your next turn — it may turn the hit into a miss." },
+  { name: "Dual Wielder (feat)", cat: "General", as: "option",
+    description: "After attacking with a Light weapon, one extra Bonus Action attack with a different non-Two-Handed melee weapon. Quick Draw: draw/stow two weapons at once.",
+    applies: { mode: "tags", tags: ["light"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Extra Bonus Action attack with a different one-handed Melee weapon; don't add your ability modifier to its damage (unless the modifier is negative)." } },
+  { name: "Durable (feat)", cat: "General", as: "feature", time: "bonus",
+    description: "Advantage on Death Saving Throws; Bonus Action to spend a Hit Point Die and heal that roll.",
+    procedure: "Speedy Recovery: Bonus Action, expend one Hit Point Die, roll it, regain that many HP." },
+  { name: "Elemental Adept (feat)", cat: "General", as: "option",
+    description: "Choose Acid, Cold, Fire, Lightning, or Thunder: your spells ignore Resistance to it, and damage dice of that type treat 1s as 2s. Repeatable.",
+    applies: { mode: "tags", tags: ["spell"], actionIds: [] }, requires: "any", defaultOn: true,
+    effects: { note: "Chosen damage type: ignores Resistance; treat any 1 on a damage die as a 2." } },
+  { name: "Fey-Touched (feat)", cat: "General", as: "feature", time: "none",
+    description: "Misty Step plus one level 1 Divination or Enchantment spell, always prepared; each free once per Long Rest.",
+    procedure: "Add both spells as their own actions. Each can be cast once per Long Rest without a slot, or normally with a slot." },
+  { name: "Grappler (feat)", cat: "General", as: "option",
+    description: "Advantage on attacks against creatures you have Grappled; Unarmed Strike can damage and Grapple at once; your Speed isn't halved while dragging.",
+    applies: { mode: "all", tags: [], actionIds: [] }, requires: "attack", defaultOn: false,
+    effects: { advantage: true, note: "Only against a creature Grappled by you. Punch and Grab: once per turn an Unarmed Strike during the Attack action can use both Damage and Grapple." } },
+  { name: "Great Weapon Master (feat)", cat: "General", as: "option",
     description: "When you hit with a Heavy weapon as part of the Attack action, deal extra damage equal to your Proficiency Bonus. Hew: after a crit or a kill with a melee weapon, one extra attack as a Bonus Action.",
     applies: { mode: "tags", tags: ["heavy"], actionIds: [] }, requires: "attack", defaultOn: true,
     effects: { dice: [{ expr: "PB", type: "" }],
       note: "Only during the Attack action. Hew: crit or kill → one Bonus Action attack with the same weapon." } },
-  { name: "Crossbow Expert (feat)",
-    description: "Ignore the Loading property of crossbows; no Disadvantage for shooting a crossbow within 5 ft; the Light-property extra attack with a light crossbow adds your ability modifier.",
-    applies: { mode: "tags", tags: ["loading"], actionIds: [] }, requires: "attack", defaultOn: true,
-    effects: { note: "Ignore Loading; no Disadvantage in melee with crossbows." } },
-  { name: "Dual Wielder (feat)",
-    description: "After attacking with a Light weapon, one extra Bonus Action attack with a different non-Two-Handed melee weapon (no ability mod to its damage). Quick Draw: draw/stow two weapons at once.",
-    applies: { mode: "tags", tags: ["light"], actionIds: [] }, requires: "attack", defaultOn: true,
-    effects: { note: "Extra Bonus Action attack with a different one-handed melee weapon; don't add your ability modifier to its damage." } },
-  { name: "Savage Attacker (feat)",
-    description: "Once per turn when you hit with a weapon, roll the weapon's damage dice twice and use either roll.",
-    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
-    effects: { note: "Once per turn: roll the weapon's damage dice twice, keep the roll you like." } },
-  { name: "Piercer (feat)",
+  { name: "Heavily Armored (feat)", cat: "General", as: "feature", time: "none",
+    description: "You gain training with Heavy armor. (Prerequisite: Medium Armor Training)",
+    procedure: "Pick Heavy armor in Edit → Character; AC is computed from it." },
+  { name: "Heavy Armor Master (feat)", cat: "General", as: "feature", time: "none",
+    description: "While wearing Heavy armor, Bludgeoning, Piercing and Slashing damage you take is reduced by your Proficiency Bonus.",
+    procedure: "Subtract {PB} from every B/P/S hit you take while in Heavy armor." },
+  { name: "Inspiring Leader (feat)", cat: "General", as: "feature", time: "none",
+    description: "On a rest, give up to six allies within 30 ft Temporary Hit Points equal to your level + the ability modifier this feat raised.",
+    procedure: "After a Short or Long Rest: up to six allies (you may include yourself) within 30 ft each gain {L} + that modifier Temporary HP." },
+  { name: "Keen Mind (feat)", cat: "General", as: "feature", time: "none",
+    description: "Proficiency (or Expertise) in Arcana, History, Investigation, Nature, or Religion; take the Study action as a Bonus Action.",
+    procedure: "Tick the chosen skill in the sheet's skill list (2 = Expertise)." },
+  { name: "Lightly Armored (feat)", cat: "General", as: "feature", time: "none",
+    description: "You gain training with Light armor and Shields.",
+    procedure: "Pick Light armor / tick Shield in Edit → Character." },
+  { name: "Mage Slayer (feat)", cat: "General", as: "option",
+    description: "A creature you damage has Disadvantage on its Concentration save; once per rest you can turn a failed INT/WIS/CHA save into a success.",
+    applies: { mode: "all", tags: [], actionIds: [] }, requires: "any", defaultOn: true,
+    effects: { note: "If the target is concentrating, it has Disadvantage on the save to keep Concentration. Guarded Mind: once per Short or Long Rest, turn one failed INT/WIS/CHA save of yours into a success." } },
+  { name: "Martial Weapon Training (feat)", cat: "General", as: "feature", time: "none",
+    description: "You gain proficiency with Martial weapons.",
+    procedure: "Tick 'proficient' on your Martial weapon actions." },
+  { name: "Medium Armor Master (feat)", cat: "General", as: "feature", time: "none",
+    description: "In Medium armor you add 3 instead of 2 to AC if your Dexterity is 16 or higher.",
+    procedure: "Type the higher AC by hand in Edit → Character (the armor picker uses the standard max 2)." },
+  { name: "Moderately Armored (feat)", cat: "General", as: "feature", time: "none",
+    description: "You gain training with Medium armor.",
+    procedure: "Pick Medium armor in Edit → Character." },
+  { name: "Mounted Combatant (feat)", cat: "General", as: "option",
+    description: "While mounted: Advantage against smaller unmounted creatures near your mount; your mount takes no damage on a successful DEX save; you can take a hit meant for your mount.",
+    applies: { mode: "all", tags: [], actionIds: [] }, requires: "attack", defaultOn: false,
+    effects: { advantage: true, note: "Only while mounted, against an unmounted creature within 5 ft of your mount that is at least one size smaller than it." } },
+  { name: "Observant (feat)", cat: "General", as: "feature", time: "none",
+    description: "Proficiency (or Expertise) in Insight, Investigation, or Perception; take the Search action as a Bonus Action.",
+    procedure: "Tick the chosen skill in the sheet's skill list (2 = Expertise)." },
+  { name: "Piercer (feat)", cat: "General", as: "option",
     description: "Once per turn, reroll one damage die of a Piercing attack. Crits with Piercing damage roll one extra damage die.",
     applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
-    effects: { note: "Piercing damage only: once per turn reroll one damage die. On a crit, roll one additional damage die." } },
-  { name: "Slasher (feat)",
+    effects: { note: "Piercing damage only: once per turn reroll one damage die (keep the new roll). On a crit, roll one additional damage die." } },
+  { name: "Poisoner (feat)", cat: "General", as: "option",
+    description: "Bonus Action to coat a weapon in poison: on a hit the target takes 2d8 Poison damage and is Poisoned unless it saves. Your Poison damage ignores Resistance.",
+    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: false,
+    effects: { dice: [{ expr: "2d8", type: "poison" }], time: "bonus",
+      note: "Applying the dose is a Bonus Action; it lasts 1 minute or until you hit. CON save DC {DC-DEX} or the target also has the Poisoned condition until the end of your next turn. Your Poison damage ignores Resistance." } },
+  { name: "Polearm Master (feat)", cat: "General", as: "option",
+    description: "After the Attack action with a Quarterstaff, Spear, or Heavy+Reach weapon: Bonus Action butt-end attack (d4 Bludgeoning). Reaction attack when a creature enters your reach.",
+    applies: { mode: "tags", tags: ["melee"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Pole Strike (Bonus Action): butt-end attack, 1d4 + {MOD} Bludgeoning. Reactive Strike: Reaction attack against a creature entering your reach." } },
+  { name: "Resilient (feat)", cat: "General", as: "feature", time: "none",
+    description: "Gain saving throw proficiency with one ability you lacked it in (and +1 to that score).",
+    procedure: "Note it here; the app doesn't roll saving throws for you." },
+  { name: "Ritual Caster (feat)", cat: "General", as: "feature", time: "none",
+    description: "Always have PB level 1 Ritual spells prepared; once per Long Rest cast one at its normal casting time without a slot.",
+    procedure: "Choose {PB} level 1 Ritual spells and add them as actions. Quick Ritual: once per Long Rest, cast one at its regular casting time, no slot." },
+  { name: "Sentinel (feat)", cat: "General", as: "feature", time: "reaction",
+    description: "Opportunity Attack when a creature near you Disengages or attacks someone else; your Opportunity Attacks drop the target's Speed to 0.",
+    procedure: "Guardian (Reaction): a creature within 5 ft Disengages or hits a target other than you → Opportunity Attack against it. Halt: on a hit with an Opportunity Attack, its Speed becomes 0 for the rest of the turn." },
+  { name: "Shadow-Touched (feat)", cat: "General", as: "feature", time: "none",
+    description: "Invisibility plus one level 1 Illusion or Necromancy spell, always prepared; each free once per Long Rest.",
+    procedure: "Add both spells as their own actions. Each can be cast once per Long Rest without a slot, or normally with a slot." },
+  { name: "Sharpshooter (feat)", cat: "General", as: "option",
+    description: "Ranged weapon attacks ignore Half and Three-Quarters Cover; no Disadvantage from shooting within 5 ft of an enemy or at long range.",
+    applies: { mode: "tags", tags: ["ranged"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Ignore Half/Three-Quarters Cover. No Disadvantage for shooting in melee or at long range." } },
+  { name: "Shield Master (feat)", cat: "General", as: "option",
+    description: "Hit with a melee weapon during the Attack action, then bash with your Shield: STR save or pushed 5 ft / knocked Prone. Reaction for no damage on a successful DEX save.",
+    applies: { mode: "tags", tags: ["melee"], actionIds: [] }, requires: "attack", defaultOn: false,
+    effects: { oncePerTurn: true,
+      note: "Shield Bash (needs an equipped Shield, once per turn): target makes a STR save DC {DC-STR} or you push it 5 ft or knock it Prone. Interpose Shield (Reaction): take no damage on a successful DEX save for half." } },
+  { name: "Skill Expert (feat)", cat: "General", as: "feature", time: "none",
+    description: "One new skill proficiency plus Expertise in a skill you're already proficient in.",
+    procedure: "Set the skills to 1 (proficient) and 2 (Expertise) in the sheet's skill list." },
+  { name: "Skulker (feat)", cat: "General", as: "feature", time: "none",
+    description: "Blindsight 10 ft; Advantage on Stealth checks made with the Hide action in combat; a missed attack from hiding doesn't reveal you.",
+    procedure: "Passive — Sniper: if an attack roll made while hidden misses, your location stays hidden." },
+  { name: "Slasher (feat)", cat: "General", as: "option",
     description: "Once per turn, a Slashing hit reduces the target's Speed by 10 ft. Slashing crits give the target Disadvantage on attack rolls until your next turn.",
     applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
-    effects: { note: "Slashing damage only: once per turn −10 ft Speed. Crit: target has Disadvantage on attacks until your next turn." } },
-  { name: "Crusher (feat)",
-    description: "Once per turn, a Bludgeoning hit moves the target 5 ft. Bludgeoning crits: attack rolls against the target have Advantage until your next turn.",
-    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
-    effects: { note: "Bludgeoning damage only: once per turn move the target 5 ft. Crit: everyone attacks it with Advantage until your next turn." } },
-  { name: "Polearm Master (feat)",
-    description: "After the Attack action with a Quarterstaff, Spear, or Heavy+Reach weapon: Bonus Action butt-end attack (d4 bludgeoning). Reaction attack when a creature enters your reach.",
-    applies: { mode: "tags", tags: ["melee"], actionIds: [] }, requires: "attack", defaultOn: true,
-    effects: { note: "Bonus Action: butt-end attack, 1d4 {MOD} bludgeoning. Reaction: attack creatures entering your reach." } },
-  { name: "Spell Sniper (feat)",
-    description: "Spell attack rolls ignore Half and Three-Quarters Cover; no Disadvantage for casting within 5 ft of an enemy; +60 ft range on attack-roll spells (10 ft+).",
+    effects: { note: "Slashing damage only: once per turn −10 ft Speed until the start of your next turn. Crit: the target has Disadvantage on attacks until the start of your next turn." } },
+  { name: "Speedy (feat)", cat: "General", as: "feature", time: "none",
+    description: "Speed +10 ft; Dash ignores Difficult Terrain; Opportunity Attacks against you have Disadvantage.",
+    procedure: "Raise Speed by 10 in Edit → Character." },
+  { name: "Spell Sniper (feat)", cat: "General", as: "option",
+    description: "Spell attack rolls ignore Half and Three-Quarters Cover; no Disadvantage for casting within 5 ft of an enemy; +60 ft range on attack-roll spells.",
     applies: { mode: "tags", tags: ["spell"], actionIds: [] }, requires: "attack", defaultOn: true,
-    effects: { note: "Ignore Half/Three-Quarters Cover; no Disadvantage in melee; range +60 ft." } },
-  { name: "Elemental Adept (feat)",
-    description: "Choose Acid, Cold, Fire, Lightning, or Thunder: your spells ignore Resistance to it, and damage dice of that type treat 1s as 2s.",
-    applies: { mode: "tags", tags: ["spell"], actionIds: [] }, requires: "any", defaultOn: true,
-    effects: { note: "Chosen damage type: ignores Resistance; treat any 1 on a damage die as a 2." } },
+    effects: { note: "Ignore Half/Three-Quarters Cover; no Disadvantage in melee; range +60 ft (spells of range 10 ft or more that need an attack roll)." } },
+  { name: "Telekinetic (feat)", cat: "General", as: "feature", time: "bonus",
+    description: "Mage Hand without components and invisible, +30 ft range; Bonus Action to shove a creature 5 ft with your mind.",
+    procedure: "Telekinetic Shove (Bonus Action, 30 ft): target makes a STR save DC {DC-INT} or is moved 5 ft toward or away from you." },
+  { name: "Telepathic (feat)", cat: "General", as: "feature", time: "none",
+    description: "Speak telepathically to creatures within 60 ft; Detect Thoughts always prepared, free once per Long Rest.",
+    procedure: "Telepathic Utterance is one-way — they can't answer in your head." },
+  { name: "War Caster (feat)", cat: "General", as: "feature", time: "none",
+    description: "Advantage on Concentration saves; cast a spell as an Opportunity Attack; cast with weapons or a Shield in hand.",
+    procedure: "Reactive Spell: when a creature leaves your reach, Reaction to cast a spell at it instead of attacking (casting time 1 action, that creature only)." },
+  { name: "Weapon Master (feat)", cat: "General", as: "feature", time: "none",
+    description: "Use the mastery property of one Simple or Martial weapon you're proficient with; change the choice on a Long Rest.",
+    procedure: "Pick the weapon; its mastery is shown on the weapon's action." },
+
+  /* ---------- FIGHTING STYLE FEATS (PHB pp. 209-210) ---------- */
+  { name: "Archery (fighting style)", cat: "Fighting Style", as: "option",
+    description: "+2 bonus to attack rolls with Ranged weapons.",
+    applies: { mode: "tags", tags: ["ranged"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { attackBonus: 2, note: "+2 to hit with Ranged weapons." } },
+  { name: "Blind Fighting (fighting style)", cat: "Fighting Style", as: "feature", time: "none",
+    description: "Blindsight with a range of 10 ft.",
+    procedure: "You can see anything within 10 ft that isn't behind Total Cover, even blinded or in Darkness." },
+  { name: "Defense (fighting style)", cat: "Fighting Style", as: "feature", time: "none",
+    description: "+1 bonus to AC while wearing Light, Medium, or Heavy armor.",
+    procedure: "Add 1 to the AC in Edit → Character (the armor picker doesn't include it)." },
+  { name: "Dueling (fighting style)", cat: "Fighting Style", as: "option",
+    description: "+2 damage with a Melee weapon held in one hand while holding no other weapon.",
+    applies: { mode: "tags", tags: ["melee"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { dice: [{ expr: "2", type: "" }], note: "Only with one Melee weapon in one hand and no other weapons." } },
+  { name: "Great Weapon Fighting (fighting style)", cat: "Fighting Style", as: "option",
+    description: "Treat any 1 or 2 on a damage die as a 3 with a two-handed Melee weapon.",
+    applies: { mode: "tags", tags: ["two-handed", "versatile"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "Held in two hands (Two-Handed or Versatile weapons only): any damage die that rolls 1 or 2 counts as 3." } },
+  { name: "Interception (fighting style)", cat: "Fighting Style", as: "feature", time: "reaction",
+    description: "Reaction: reduce damage to a creature within 5 ft by 1d10 + your Proficiency Bonus.",
+    procedure: "When someone you can see hits another creature within 5 ft of you: Reaction, reduce that damage by 1d10 + {PB}. You must be holding a Shield or a Simple/Martial weapon." },
+  { name: "Protection (fighting style)", cat: "Fighting Style", as: "feature", time: "reaction",
+    description: "Reaction with a Shield: impose Disadvantage on attacks against a creature within 5 ft of you.",
+    procedure: "When a creature attacks a target other than you within 5 ft: Reaction, interpose your Shield — Disadvantage on that attack and on all attacks against that target until the start of your next turn (while you stay within 5 ft)." },
+  { name: "Thrown Weapon Fighting (fighting style)", cat: "Fighting Style", as: "option",
+    description: "+2 damage when you hit with a thrown weapon.",
+    applies: { mode: "tags", tags: ["thrown"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { dice: [{ expr: "2", type: "" }], note: "Only on a ranged attack roll with a Thrown weapon." } },
+  { name: "Two-Weapon Fighting (fighting style)", cat: "Fighting Style", as: "option",
+    description: "Add your ability modifier to the damage of the extra attack from the Light property.",
+    applies: { mode: "tags", tags: ["light"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "On the Light-property extra attack only: add {MOD} to its damage (if you aren't already)." } },
+  { name: "Unarmed Fighting (fighting style)", cat: "Fighting Style", as: "feature", time: "action",
+    description: "Unarmed Strike deals 1d6 + STR Bludgeoning (1d8 with nothing in your hands); 1d4 to a creature you have Grappled each turn.",
+    procedure: "Unarmed Strike: attack roll {STR} + {PB}, damage 1d6 + {STR} Bludgeoning — 1d8 + {STR} if you hold no weapon and no Shield. At the start of each of your turns, a creature Grappled by you takes 1d4 Bludgeoning." },
+
+  /* ---------- EPIC BOON FEATS (PHB pp. 210-211, level 19+) ---------- */
+  { name: "Boon of Combat Prowess (feat)", cat: "Epic Boon", as: "option",
+    description: "When you miss with an attack roll, you can hit instead. Once per turn.",
+    applies: { mode: "all", tags: [], actionIds: [] }, requires: "attack", defaultOn: false,
+    effects: { oncePerTurn: true, note: "Peerless Aim: turn one miss into a hit. Usable again at the start of your next turn." } },
+  { name: "Boon of Dimensional Travel (feat)", cat: "Epic Boon", as: "feature", time: "none",
+    description: "Right after the Attack or Magic action, teleport up to 30 ft to a space you can see.",
+    procedure: "Free, immediately after that action — no Bonus Action needed." },
+  { name: "Boon of Energy Resistance (feat)", cat: "Epic Boon", as: "feature", time: "reaction",
+    description: "Resistance to two damage types of your choice (changeable on a Long Rest) and a Reaction that redirects that damage.",
+    procedure: "Energy Redirection (Reaction): a creature within 60 ft makes a DEX save DC {DC-CON} or takes 2d12 + {CON} damage of that type." },
+  { name: "Boon of Fate (feat)", cat: "Epic Boon", as: "feature", time: "none",
+    description: "Roll 2d4 and add or subtract it from any D20 Test within 60 ft, after it succeeds or fails.",
+    procedure: "Once per Initiative roll or Short/Long Rest." },
+  { name: "Boon of Fortitude (feat)", cat: "Epic Boon", as: "feature", time: "none",
+    description: "Hit Point maximum +40; healing you receive is increased by your Constitution modifier.",
+    procedure: "Add 40 to Max HP. The extra {CON} HP per healing works once, then recharges at the start of your next turn." },
+  { name: "Boon of Irresistible Offense (feat)", cat: "Epic Boon", as: "option",
+    description: "Your Bludgeoning, Piercing and Slashing damage ignores Resistance; a natural 20 adds extra damage equal to the ability score this boon raised.",
+    applies: { mode: "tags", tags: ["weapon"], actionIds: [] }, requires: "attack", defaultOn: true,
+    effects: { note: "B/P/S damage ignores Resistance. On a natural 20, add extra damage equal to the raised ability score (not the modifier)." } },
+  { name: "Boon of Recovery (feat)", cat: "Epic Boon", as: "feature", time: "bonus",
+    description: "Drop to 1 HP and heal half your maximum instead of falling; a pool of ten d10s of Bonus Action healing.",
+    procedure: "Recover Vitality (Bonus Action): spend any number of the ten d10s and regain their total. Last Stand: once per Long Rest, avoid dropping to 0 and regain half your HP maximum." },
+  { name: "Boon of Skill (feat)", cat: "Epic Boon", as: "feature", time: "none",
+    description: "Proficiency in all skills, plus Expertise in one.",
+    procedure: "Set every skill to 1 in the sheet's skill list, and one to 2." },
+  { name: "Boon of Speed (feat)", cat: "Epic Boon", as: "feature", time: "bonus",
+    description: "Speed +30 ft; Bonus Action Disengage that also ends Grappled on you.",
+    procedure: "Raise Speed by 30 in Edit → Character." },
+  { name: "Boon of Spell Recall (feat)", cat: "Epic Boon", as: "feature", time: "none",
+    description: "When you cast with a level 1-4 slot, roll 1d4: on the slot's level, the slot isn't expended.",
+    procedure: "Cast normally and spend the slot here; if the d4 matches, click the slot pip again to give it back." },
+  { name: "Boon of the Night Spirit (feat)", cat: "Epic Boon", as: "feature", time: "bonus",
+    description: "In Dim Light or Darkness: Bonus Action to turn Invisible, and Resistance to all damage except Psychic and Radiant.",
+    procedure: "The Invisible condition ends right after you take an action, Bonus Action, or Reaction." },
+  { name: "Boon of Truesight (feat)", cat: "Epic Boon", as: "feature", time: "none",
+    description: "Truesight with a range of 60 ft.",
+    procedure: "Passive — see in Darkness, spot Invisible creatures, see through illusions and into the Ethereal Plane." },
 ];
 
 /* ============================================================
@@ -743,6 +2240,7 @@ function blankCharacter(name) {
     casterType: "auto", spellAbility: "int",
     abilities: { str:10, dex:10, con:10, int:10, wis:10, cha:10 },
     ac: 10, speed: 30, maxHp: 10, initExtra: 0, hitDie: "d8",
+    armorName: "", shield: false,
     skills: {}, equipment: [], coins: { pp:0, gp:0, ep:0, sp:0, cp:0 },
     resources: [], actions: [], options: [],
     state: Object.assign(freshState(), { hp: 10 })
@@ -750,6 +2248,46 @@ function blankCharacter(name) {
 }
 
 function totalLevel(ch) { return ch.classes.reduce((s, c) => s + (c.level || 0), 0) || 1; }
+
+// --- Armor ---------------------------------------------------
+// ch.ac stays the single source of truth (it can always be typed by hand);
+// picking armor just computes a value for it.
+function armorEntry(name) { return ARMOR_LIBRARY.find(a => a.name === name) || null; }
+
+function computeAC(ch) {
+  const a = armorEntry(ch.armorName);
+  const dex = mod(ch.abilities.dex);
+  const base = a ? a.ac + (a.dexMax === null ? dex : Math.min(dex, a.dexMax)) : 10 + dex;
+  return base + (ch.shield ? SHIELD_BONUS : 0);
+}
+
+// Warnings the armor itself imposes (Stealth, Speed) — shown next to the picker.
+function armorNotes(ch) {
+  const a = armorEntry(ch.armorName); const out = [];
+  if (!a) return out;
+  if (a.stealthDis) out.push("Disadvantage on Dexterity (Stealth) checks.");
+  if (a.str && ch.abilities.str < a.str) out.push(`Speed −10 ft (needs Strength ${a.str}, you have ${ch.abilities.str}).`);
+  return out;
+}
+
+// Keep the equipment list in sync with what's worn.
+function syncArmorEquipment(ch) {
+  const names = ARMOR_LIBRARY.map(a => a.name);
+  ch.equipment = ch.equipment.filter(e => !names.includes(e.name) && e.name !== "Shield");
+  if (ch.armorName) ch.equipment.unshift({ id: uid(), name: ch.armorName, qty: 1 });
+  if (ch.shield) ch.equipment.unshift({ id: uid(), name: "Shield", qty: 1 });
+}
+
+function setArmor(name) {
+  const ch = currentChar();
+  ch.armorName = name; ch.ac = computeAC(ch); syncArmorEquipment(ch);
+  saveDB(); renderEdit();
+}
+function setShield(on) {
+  const ch = currentChar();
+  ch.shield = !!on; ch.ac = computeAC(ch); syncArmorEquipment(ch);
+  saveDB(); renderEdit();
+}
 
 function casterTypeOf(ch) {
   if (ch.casterType && ch.casterType !== "auto") return ch.casterType;
@@ -808,7 +2346,7 @@ function loadDB() {
       if (DB && Array.isArray(DB.characters) && DB.characters.length) { migrateDB(); return; }
     }
   } catch (e) { console.warn("load failed", e); }
-  DB = { version: 1, characters: seedCharacters(), currentId: null, settings: { useResources: false } };
+  DB = { version: 4, characters: seedCharacters(), currentId: null, settings: { useResources: false } };
   DB.currentId = DB.characters[0].id;
   saveDB();
 }
@@ -839,6 +2377,18 @@ function migrateDB() {
     }
     DB.version = 3;
   }
+  if ((DB.version || 1) < 4) { // v4: armor library (armorName/shield; AC itself stays editable)
+    const worn = { "Sylas": ["Leather Armor", false], "Mira": ["Chain Mail", true],
+                   "Eldrin": ["", false], "Serra": ["Plate Armor", true] };
+    for (const ch of DB.characters) {
+      if (ch.armorName === undefined) {
+        const key = Object.keys(worn).find(k => ch.name.startsWith(k));
+        ch.armorName = key ? worn[key][0] : "";
+        ch.shield = key ? worn[key][1] : ch.equipment.some(e => e.name === "Shield");
+      }
+    }
+    DB.version = 4;
+  }
   saveDB();
 }
 
@@ -865,7 +2415,7 @@ function weaponAction(libName, overrides) {
   return Object.assign({
     id: uid(), name: w.name, kind: "weapon", time: "action",
     ability: "auto", attack: "attack", proficient: true, attackExtra: 0,
-    saveAbility: "dex", saveHalf: false,
+    saveAbility: "dex", saveHalf: false, dcAbility: "",
     damage: [{ expr: w.dmg, type: w.type }],
     spellLevel: null, upcast: null, count: 1, countLabel: "", countScale: "none",
     damageScale: "none", concentration: false, oncePerTurn: false, setFlags: [], costs: [],
@@ -879,7 +2429,7 @@ function spellAction(o) {
   return Object.assign({
     id: uid(), kind: "spell", time: "action", ability: "spell",
     attack: "none", proficient: true, attackExtra: 0,
-    saveAbility: "dex", saveHalf: true,
+    saveAbility: "dex", saveHalf: true, dcAbility: "",
     damage: [], spellLevel: 1, upcast: null,
     count: 1, countLabel: "", countScale: "none", damageScale: "none",
     concentration: false, oncePerTurn: false, setFlags: [], costs: [],
@@ -891,7 +2441,7 @@ function featureAction(o) {
   return Object.assign({
     id: uid(), kind: "feature", time: "action", ability: "none",
     attack: "none", proficient: true, attackExtra: 0,
-    saveAbility: "dex", saveHalf: false,
+    saveAbility: "dex", saveHalf: false, dcAbility: "",
     damage: [], spellLevel: null, upcast: null,
     count: 1, countLabel: "", countScale: "none", damageScale: "none",
     concentration: false, oncePerTurn: false, setFlags: [], costs: [],
@@ -905,12 +2455,12 @@ function makeOption(o) {
     applies: { mode: "all", tags: [], actionIds: [] },
     requires: "any", defaultOn: false,
     effects: {
-      dice: [], advantage: false, disadvantage: false, autoCrit: false,
+      dice: [], advantage: false, disadvantage: false, autoCrit: false, attackBonus: 0,
       slotCost: 0, upcast: null, resourceCosts: [],
       time: null, speedZero: false, oncePerTurn: false, setFlags: [], note: ""
     }
   }, o, { effects: Object.assign({
-      dice: [], advantage: false, disadvantage: false, autoCrit: false,
+      dice: [], advantage: false, disadvantage: false, autoCrit: false, attackBonus: 0,
       slotCost: 0, upcast: null, resourceCosts: [],
       time: null, speedZero: false, oncePerTurn: false, setFlags: [], note: ""
     }, o.effects || {}) });
@@ -946,9 +2496,124 @@ function applyKit(ch, kit) {
 }
 
 // Instantiate a feat from FEAT_LIBRARY as a regular (editable) Option.
+function findFeat(name) {
+  return FEAT_LIBRARY.find(x => x.name === name || x.name.startsWith(name));
+}
+
 function featOption(name, overrides) {
-  const f = FEAT_LIBRARY.find(x => x.name === name || x.name.startsWith(name));
-  return makeOption(Object.assign(JSON.parse(JSON.stringify(f)), overrides || {}));
+  const f = JSON.parse(JSON.stringify(findFeat(name)));
+  delete f.cat; delete f.as;
+  return makeOption(Object.assign(f, overrides || {}));
+}
+
+// Add a class's features (and its subclass's) up to the character's level.
+// Returns how many were added; features already present by name are skipped.
+function addClassFeatures(clsName, subclass, level) {
+  const entry = CLASS_LIBRARY[clsName];
+  if (!entry) return 0;
+  const ch = currentChar();
+  const picked = entry.features.filter(f => f.level <= level)
+    .concat(((entry.subclasses || {})[subclass] || []).filter(f => f.level <= level));
+  let added = 0;
+  for (const f of picked) {
+    const label = `${f.name} (${f.level})`;
+    if (ch.options.some(o => o.name === label) || ch.actions.some(a => a.name === label)) continue;
+    const copy = JSON.parse(JSON.stringify(f));
+    delete copy.as; delete copy.level;
+    if (f.as === "option") {
+      ch.options.push(makeOption(Object.assign(copy, { name: label })));
+    } else {
+      ch.actions.push(featureAction(Object.assign(copy, {
+        name: label, time: f.time || "none", tags: (f.attack ? ["class"] : ["class"])
+      })));
+    }
+    added++;
+  }
+  saveDB(); renderEdit();
+  return added;
+}
+
+function addClassFeaturesForCharacter() {
+  const ch = currentChar();
+  const c = ch.classes[0] || {};
+  if (!CLASS_LIBRARY[c.cls]) {
+    alert(`No feature list for ${c.cls || "that class"} yet — the library covers ${Object.keys(CLASS_LIBRARY).join(", ")}.`);
+    return;
+  }
+  const n = addClassFeatures(c.cls, c.subclass, c.level || 1);
+  alert(n ? `Added ${n} ${c.cls} feature${n === 1 ? "" : "s"} up to level ${c.level}.`
+          : `No new features to add — you already have every ${c.cls} feature up to level ${c.level}.`);
+}
+
+// Build a usable action from a spell-library entry.
+function spellFromLibrary(name) {
+  const sp = SPELL_LIBRARY.find(x => x.name === name);
+  if (!sp) return null;
+  const tags = ["spell", sp.school.toLowerCase()];
+  if (sp.ritual) tags.push("ritual");
+  return spellAction({
+    name: sp.name, spellLevel: sp.level, time: sp.time || "action",
+    attack: sp.attack || "none", saveAbility: sp.saveAbility || "dex", saveHalf: !!sp.saveHalf,
+    damage: (sp.damage || []).map(d => Object.assign({}, d)),
+    damageScale: sp.damageScale || "none",
+    upcast: sp.upcast && sp.upcast.mode !== "none" ? JSON.parse(JSON.stringify(sp.upcast)) : null,
+    count: sp.count || 1, countLabel: sp.countLabel || "",
+    concentration: !!sp.conc, tags,
+    description: `${sp.level ? "Level " + sp.level : "Cantrip"} ${sp.school} · ${sp.range}${sp.duration ? " · " + sp.duration : ""}${sp.ritual ? " · Ritual" : ""} — ${sp.description}`,
+    procedure: sp.procedure
+  });
+}
+
+// Add every trait of a species to the current character.
+function addSpecies(name) {
+  const sp = SPECIES_LIBRARY.find(x => x.name === name);
+  if (!sp) return;
+  const ch = currentChar();
+  ch.speed = sp.speed;
+  for (const t of sp.traits) {
+    const label = `${t.name} (${sp.name})`;
+    if (t.as === "option") {
+      const o = JSON.parse(JSON.stringify(t)); delete o.as;
+      ch.options.push(makeOption(Object.assign(o, { name: label })));
+    } else {
+      const a = JSON.parse(JSON.stringify(t)); delete a.as;
+      ch.actions.push(featureAction(Object.assign(a, { name: label, tags: ["species"] })));
+    }
+  }
+  saveDB(); renderEdit();
+}
+
+// Apply a background: skill proficiencies, tool, starting gear, coins and its Origin feat.
+function addBackground(name) {
+  const bg = BACKGROUND_LIBRARY.find(x => x.name === name);
+  if (!bg) return;
+  const ch = currentChar();
+  for (const sk of bg.skills) if (!ch.skills[sk]) ch.skills[sk] = 1;
+  for (const [item, qty] of bg.equipment) {
+    const have = ch.equipment.find(e => e.name === item);
+    if (have) have.qty += qty; else ch.equipment.push({ id: uid(), name: item, qty });
+  }
+  if (bg.tool && !ch.equipment.some(e => e.name === bg.tool)) ch.equipment.push({ id: uid(), name: bg.tool, qty: 1 });
+  ch.coins.gp = (ch.coins.gp || 0) + bg.gp;
+  const feat = findFeat(bg.feat);
+  if (feat && !ch.options.some(o => o.name === feat.name) && !ch.actions.some(a => a.name === feat.name)) {
+    if (feat.as === "feature") ch.actions.push(featFeature(feat.name));
+    else ch.options.push(featOption(feat.name));
+  }
+  saveDB(); renderEdit();
+  alert(`${bg.name}: skills, tool, gear and ${bg.gp} GP added, plus the ${bg.feat} feat` +
+    (bg.featNote ? ` (${bg.featNote})` : "") +
+    `.\nAbility scores (+2/+1 or +1/+1/+1 across ${bg.abilities.map(a => ABILITY_NAMES[a]).join(", ")}) are yours to set.`);
+}
+
+// Feats that don't change a roll become a no-cost Feature action: a reference
+// card on the sheet rather than a toggle on every attack.
+function featFeature(name, overrides) {
+  const f = JSON.parse(JSON.stringify(findFeat(name)));
+  return featureAction(Object.assign({
+    name: f.name, time: f.time || "none", tags: ["feat"],
+    description: f.description, procedure: f.procedure || ""
+  }, overrides || {}));
 }
 
 function seedRogue() {
@@ -956,6 +2621,7 @@ function seedRogue() {
   ch.classes = [{ cls: "Rogue", subclass: "Assassin", level: 5 }];
   ch.abilities = { str:10, dex:18, con:14, int:12, wis:13, cha:8 };
   ch.ac = 15; ch.speed = 30; ch.maxHp = 38; ch.hitDie = "d8";
+  ch.armorName = "Leather Armor";
   ch.spellAbility = "int";
   ch.portrait = SYLAS_PORTRAIT;
   applyKit(ch, SAMPLE_KIT.rogue);
@@ -1030,12 +2696,13 @@ function seedCleric() {
   ch.classes = [{ cls: "Cleric", subclass: "Life Domain", level: 5 }];
   ch.abilities = { str:14, dex:10, con:14, int:10, wis:16, cha:12 };
   ch.ac = 18; ch.speed = 30; ch.maxHp = 38; ch.hitDie = "d8";
+  ch.armorName = "Chain Mail"; ch.shield = true;
   ch.spellAbility = "wis";
   applyKit(ch, SAMPLE_KIT.cleric);
   ch.resources = [{ id: uid(), name: "Channel Divinity", max: 2, reset: "short", style: "pips" }];
   ch.actions = [
     weaponAction("Mace"),
-    spellAction({ name: "Sacred Flame", spellLevel: 0, attack: "save", saveAbility: "dex", saveHalf: false,
+    spellAction({ name: "Sacred Flame", spellLevel: 0, attack: "save", saveAbility: "dex", saveHalf: false, dcAbility: "",
       damage: [{ expr: "1d8", type: "radiant" }], damageScale: "cantrip",
       description: "Radiance descends on a creature within 60 ft. DEX save or take the damage; no benefit from half/three-quarters cover.",
       procedure: "Target makes a DEX save vs. your spell DC. On a fail it takes the damage; on a success, nothing." }),
@@ -1101,7 +2768,7 @@ function seedWizard() {
       upcast: { mode: "count" },
       description: "Hurl three rays (120 ft). Separate ranged spell attack per ray; 2d6 fire each.",
       procedure: "Make a separate attack roll for each ray. Apply 2d6 fire per hit." }),
-    spellAction({ name: "Fireball", spellLevel: 3, attack: "save", saveAbility: "dex", saveHalf: true,
+    spellAction({ name: "Fireball", spellLevel: 3, attack: "save", saveAbility: "dex", saveHalf: true, dcAbility: "",
       damage: [{ expr: "8d6", type: "fire" }], upcast: { mode: "dice", expr: "1d6", type: "fire" },
       description: "20-ft-radius explosion, 150 ft range. DEX save: 8d6 fire, half on success. Ignites flammables.",
       procedure: "Everyone in the 20-ft sphere makes a DEX save vs. your spell DC. Fail = full damage, success = half." }),
@@ -1118,6 +2785,7 @@ function seedPaladin() {
   ch.classes = [{ cls: "Paladin", subclass: "Oath of Devotion", level: 5 }];
   ch.abilities = { str:16, dex:10, con:14, int:8, wis:12, cha:16 };
   ch.ac = 20; ch.speed = 30; ch.maxHp = 44; ch.hitDie = "d10";
+  ch.armorName = "Plate Armor"; ch.shield = true;
   ch.spellAbility = "cha";
   applyKit(ch, SAMPLE_KIT.paladin);
   ch.resources = [
@@ -1295,7 +2963,8 @@ function resolveSelection(ch, action, sel) {
   if (action.attack === "attack") {
     r.attackBonus = ctx.mod + (action.proficient ? ctx.pb : 0) + (action.attackExtra || 0);
   } else if (action.attack === "save") {
-    r.save = { ability: action.saveAbility, dc: ctx.dc, half: action.saveHalf };
+    const dcAb = action.dcAbility && ABILITIES.includes(action.dcAbility) ? action.dcAbility : null;
+    r.save = { ability: action.saveAbility, dc: dcAb ? 8 + ctx.pb + ctx.mods[dcAb] : ctx.dc, half: action.saveHalf };
   }
 
   // --- resource costs on the action itself ---
@@ -1328,6 +2997,7 @@ function resolveSelection(ch, action, sel) {
     if (fx.advantage) r.advCount++;
     if (fx.disadvantage) r.disCount++;
     if (fx.autoCrit) r.autoCrit = true;
+    if (fx.attackBonus && r.attackBonus !== null) r.attackBonus += fx.attackBonus;
     for (const d of (fx.dice || [])) addDice(d.expr, d.type || "");
     if (fx.slotCost > 0) {
       const lvl = (sel.optSlots && sel.optSlots[opt.id]) || fx.slotCost;
@@ -1881,6 +3551,7 @@ function renderEdit() {
         `<button class="chip ${sub === t ? "active" : ""}" onclick="UI.editTab='${t}';renderEdit()">${cap(t)}</button>`).join("")}
     </div>
     <div id="editBody">${sub === "character" ? editCharacterHtml(ch) : sub === "actions" ? editActionsHtml(ch) : editOptionsHtml(ch)}</div>`;
+  if ($("#spellPick")) filterSpellPick();   // fill the spell picker after it exists
 }
 
 function editCharacterHtml(ch) {
@@ -1891,10 +3562,23 @@ function editCharacterHtml(ch) {
       <label>Name <input type="text" class="wide" style="width:220px" value="${esc(ch.name)}" onchange="updChar('name',this.value)"></label>
       <label>Max HP <input type="number" value="${ch.maxHp}" onchange="updChar('maxHp',parseInt(this.value)||1)"></label>
       <label>AC <input type="number" value="${ch.ac}" onchange="updChar('ac',parseInt(this.value)||10)"></label>
+      <label>Armor <select onchange="setArmor(this.value)">
+        <option value="" ${!ch.armorName ? "selected" : ""}>— none (Unarmored) —</option>
+        ${ARMOR_LIBRARY.map(a => `<option value="${esc(a.name)}" ${ch.armorName === a.name ? "selected" : ""}>${esc(a.name)} (${esc(a.cat)}, AC ${a.ac}${a.dexMax === null ? "+Dex" : a.dexMax ? "+Dex max " + a.dexMax : ""})</option>`).join("")}
+      </select></label>
+      <label style="flex-direction:row;align-items:center;gap:6px">Shield (+2) <input type="checkbox" ${ch.shield ? "checked" : ""} onchange="setShield(this.checked)"></label>
       <label>Speed <input type="number" value="${ch.speed}" onchange="updChar('speed',parseInt(this.value)||30)"></label>
       <label>Hit die <select onchange="updChar('hitDie',this.value)">${["d6","d8","d10","d12"].map(d => `<option ${ch.hitDie === d ? "selected" : ""}>${d}</option>`).join("")}</select></label>
       <label>Initiative bonus (extra) <input type="number" value="${ch.initExtra || 0}" onchange="updChar('initExtra',parseInt(this.value)||0)"></label>
     </div>
+    <div class="formrow">
+      <label>Species <select id="speciesPick">${SPECIES_LIBRARY.map(sp => `<option value="${esc(sp.name)}">${esc(sp.name)} (${esc(sp.size)}, ${sp.speed} ft)</option>`).join("")}</select></label>
+      <button class="btn small" style="align-self:flex-end" onclick="addSpecies($('#speciesPick').value)">＋ Add species traits</button>
+      <label>Background <select id="bgPick">${BACKGROUND_LIBRARY.map(b => `<option value="${esc(b.name)}">${esc(b.name)} — ${esc(b.feat)}</option>`).join("")}</select></label>
+      <button class="btn small" style="align-self:flex-end" onclick="addBackground($('#bgPick').value)">＋ Apply background</button>
+      <button class="btn small" style="align-self:flex-end" onclick="addClassFeaturesForCharacter()">＋ Add class features</button>
+    </div>
+    <div class="hint">Armor sets AC to ${computeAC(ch)} (you can still type any AC by hand).${armorNotes(ch).map(n => " " + esc(n)).join("")}</div>
     <div class="formrow" style="align-items:center">
       ${ch.portrait ? `<img class="portrait editpreview" src="${ch.portrait}" alt="Portrait">` : ""}
       <label>Portrait <input type="file" accept="image/*" onchange="setPortraitFile(this.files[0])"></label>
@@ -2010,6 +3694,18 @@ function editActionsHtml(ch) {
       <button class="btn" onclick="addAction()">＋ New action</button>
       <select id="libPick">${WEAPON_LIBRARY.map((w, i) => `<option value="${i}">${esc(w.name)} (${esc(w.cat)}, ${esc(w.dmg.replace("+MOD", ""))} ${esc(w.type)})</option>`).join("")}</select>
       <button class="btn" onclick="addFromLibrary()">＋ Add weapon from 2024 list</button>
+    </div>
+    <div class="btnrow" style="margin-top:10px;flex-wrap:wrap">
+      <input type="text" id="spellSearch" placeholder="search spells…" style="width:150px" oninput="filterSpellPick()">
+      <select id="spellClass" onchange="filterSpellPick()">
+        <option value="">all lists</option><option value="cleric">Cleric</option>
+        <option value="paladin">Paladin</option><option value="wizard">Wizard</option>
+      </select>
+      <select id="spellLevel" onchange="filterSpellPick()">
+        <option value="">any level</option>${[0,1,2,3].map(l => `<option value="${l}">${l ? "Level " + l : "Cantrips"}</option>`).join("")}
+      </select>
+      <select id="spellPick"></select>
+      <button class="btn" onclick="addSpellFromLibrary()">＋ Add spell</button>
     </div>`;
 }
 
@@ -2061,6 +3757,9 @@ function actionFormHtml(ch, a) {
         <label>Save ability <select onchange="updAction('${a.id}','saveAbility',this.value)">
           ${ABILITIES.map(x => `<option value="${x}" ${a.saveAbility === x ? "selected" : ""}>${ABILITY_NAMES[x]}</option>`).join("")}</select></label>
         <label style="flex-direction:row;align-items:center;gap:6px">Half damage on success <input type="checkbox" ${a.saveHalf ? "checked" : ""} onchange="updAction('${a.id}','saveHalf',this.checked)"></label>
+        <label>DC from <select onchange="updAction('${a.id}','dcAbility',this.value)">
+          <option value="" ${!a.dcAbility ? "selected" : ""}>spellcasting ability</option>
+          ${ABILITIES.map(x => `<option value="${x}" ${a.dcAbility === x ? "selected" : ""}>${ABILITY_NAMES[x]}</option>`).join("")}</select></label>
       </div>` : ""}
     </fieldset>
     <fieldset><legend>Damage / Healing</legend>
@@ -2146,6 +3845,28 @@ function updActionCost(id, i, f, v) { findAction(id).costs[i][f] = v; saveDB(); 
 function addActionCost(id) { const ch = currentChar(); findAction(id).costs.push({ type: "resource", id: ch.resources[0].id, amount: 1 }); saveDB(); renderEdit(); }
 function removeActionCost(id, i) { findAction(id).costs.splice(i, 1); saveDB(); renderEdit(); }
 function addAction() { const a = featureAction({ name: "New action", description: "" }); currentChar().actions.push(a); UI.editActionId = a.id; saveDB(); renderEdit(); }
+// The spell picker rebuilds its own <option> list so typing doesn't lose focus.
+function filterSpellPick() {
+  const sel = $("#spellPick"); if (!sel) return;
+  const q = (($("#spellSearch") || {}).value || "").trim().toLowerCase();
+  const cls = (($("#spellClass") || {}).value || "");
+  const lvl = (($("#spellLevel") || {}).value || "");
+  const hits = SPELL_LIBRARY.filter(sp =>
+    (!cls || sp.classes.includes(cls)) &&
+    (lvl === "" || sp.level === parseInt(lvl, 10)) &&
+    (!q || sp.name.toLowerCase().includes(q) || sp.school.toLowerCase().includes(q)));
+  sel.innerHTML = hits.length
+    ? hits.map(sp => `<option value="${esc(sp.name)}">${esc(sp.name)} — ${sp.level ? "L" + sp.level : "cantrip"}, ${esc(sp.classes.map(cap).join("/"))}</option>`).join("")
+    : `<option value="">no match</option>`;
+}
+
+function addSpellFromLibrary() {
+  const name = ($("#spellPick") || {}).value;
+  const a = name && spellFromLibrary(name);
+  if (!a) return;
+  currentChar().actions.push(a); UI.editActionId = a.id; saveDB(); renderEdit();
+}
+
 function addFromLibrary() {
   const idx = parseInt($("#libPick").value, 10);
   const a = weaponAction(WEAPON_LIBRARY[idx].name);
@@ -2178,15 +3899,25 @@ function editOptionsHtml(ch) {
   return `<div class="hint" style="margin-bottom:10px">Options are toggles that appear on matching actions — combos like Sneak Attack, Steady Aim, Divine Smite, feats, fighting styles…</div>
     ${rows}<div class="btnrow" style="margin-top:10px">
       <button class="btn" onclick="addOption()">＋ New option</button>
-      <select id="featPick">${FEAT_LIBRARY.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select>
+      <select id="featPick">${["Origin", "General", "Fighting Style", "Epic Boon"].map(cat =>
+        `<optgroup label="${cat} feats">${FEAT_LIBRARY.map((f, i) => [f, i]).filter(([f]) => f.cat === cat)
+          .map(([f, i]) => `<option value="${i}">${esc(f.name.replace(/ \((feat|fighting style)\)$/, ""))}${f.as === "feature" ? " — reference" : ""}</option>`).join("")}</optgroup>`).join("")}</select>
       <button class="btn" onclick="addFeatFromLibrary()">＋ Add feat from 2024 list</button>
     </div>`;
 }
 
 function addFeatFromLibrary() {
   const f = FEAT_LIBRARY[parseInt($("#featPick").value, 10)];
-  const o = featOption(f.name);
-  currentChar().options.push(o); UI.editOptionId = o.id; saveDB(); renderEdit();
+  const ch = currentChar();
+  if (f.as === "feature") {
+    const a = featFeature(f.name);
+    ch.actions.push(a); UI.editTab = "actions"; UI.editActionId = a.id;
+    alert(`"${f.name}" doesn't change any roll — added under Actions as a reference card.`);
+  } else {
+    const o = featOption(f.name);
+    ch.options.push(o); UI.editOptionId = o.id;
+  }
+  saveDB(); renderEdit();
 }
 
 function optionFormHtml(ch, o) {
@@ -2238,6 +3969,7 @@ function optionFormHtml(ch, o) {
         <label style="flex-direction:row;align-items:center;gap:6px">Advantage <input type="checkbox" ${fx.advantage ? "checked" : ""} onchange="updEffect('${o.id}','advantage',this.checked)"></label>
         <label style="flex-direction:row;align-items:center;gap:6px">Disadvantage <input type="checkbox" ${fx.disadvantage ? "checked" : ""} onchange="updEffect('${o.id}','disadvantage',this.checked)"></label>
         <label style="flex-direction:row;align-items:center;gap:6px">Auto-crit <input type="checkbox" ${fx.autoCrit ? "checked" : ""} onchange="updEffect('${o.id}','autoCrit',this.checked)"></label>
+        <label>To-hit bonus <input type="number" style="width:70px" value="${fx.attackBonus || 0}" onchange="updEffect('${o.id}','attackBonus',parseInt(this.value)||0)"></label>
         <label style="flex-direction:row;align-items:center;gap:6px">Once per turn <input type="checkbox" ${fx.oncePerTurn ? "checked" : ""} onchange="updEffect('${o.id}','oncePerTurn',this.checked)"></label>
         <label style="flex-direction:row;align-items:center;gap:6px">Speed → 0 <input type="checkbox" ${fx.speedZero ? "checked" : ""} onchange="updEffect('${o.id}','speedZero',this.checked)"></label>
       </div>
